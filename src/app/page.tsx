@@ -2,64 +2,51 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 font-sans p-6 text-slate-900">
+      <main className="flex w-full max-w-xl flex-col items-center text-center bg-white rounded-2xl shadow-xl shadow-slate-100 border border-slate-100 p-8 md:p-12">
+        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 text-white font-bold text-2xl shadow-lg shadow-blue-200 mb-6">
+          T
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 mb-2">
+          TambakKu
+        </h1>
+        <p className="text-sm font-medium text-blue-600 mb-6 uppercase tracking-wider">
+          Digitalisasi Budidaya Udang & Pembukuan Tambak
+        </p>
+        <p className="text-slate-600 leading-relaxed mb-8">
+          Aplikasi berbasis web untuk digitalisasi pencatatan budidaya udang vaname dan pembukuan usaha tambak skala kecil hingga menengah.
+        </p>
+        
+        <div className="w-full bg-slate-50 border border-slate-100 rounded-xl p-4 text-left mb-8">
+          <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+            Status Proyek (Tahap 1-5 Selesai)
+          </h2>
+          <div className="flex items-center gap-2 text-sm text-green-600 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            Next.js & Dashboard Berhasil Dikonfigurasi
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 w-full mb-8">
           <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/login"
+            className="flex-1 flex h-11 items-center justify-center rounded-xl bg-blue-600 text-white font-semibold shadow-md shadow-blue-200 hover:bg-blue-700 transition-colors"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
+            Masuk Akun
           </a>
           <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/register"
+            className="flex-1 flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold hover:bg-slate-50 transition-colors"
           >
-            Documentation
+            Daftar Baru
           </a>
+        </div>
+
+        <div className="text-xs text-slate-400">
+          Program Kerja KKN - TambakKu &copy; {new Date().getFullYear()}
         </div>
       </main>
     </div>
   );
 }
+
