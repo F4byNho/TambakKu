@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 interface TambakItem {
@@ -120,17 +120,17 @@ export default function LaporanPage() {
       // Filter tanggal di sisi klien (jika diisi)
       if (startDate) {
         const start = new Date(startDate);
-        dataset.benur = dataset.benur.filter(b => new Date(b.tanggal_tebar) >= start);
-        dataset.operasional = dataset.operasional.filter(o => new Date(o.tanggal) >= start);
-        dataset.sampling = dataset.sampling.filter(s => new Date(s.tanggal) >= start);
-        dataset.panen = dataset.panen.filter(p => new Date(p.tanggal) >= start);
+        dataset.benur = dataset.benur.filter(b => new Date(b.tanggal_tebar || b.tanggal) >= start);
+        dataset.operasional = dataset.operasional.filter(o => new Date(o.tanggal || o.tanggal_operasional) >= start);
+        dataset.sampling = dataset.sampling.filter(s => new Date(s.tanggal_sampling || s.tanggal) >= start);
+        dataset.panen = dataset.panen.filter(p => new Date(p.tanggal_panen || p.tanggal) >= start);
       }
       if (endDate) {
         const end = new Date(endDate);
-        dataset.benur = dataset.benur.filter(b => new Date(b.tanggal_tebar) <= end);
-        dataset.operasional = dataset.operasional.filter(o => new Date(o.tanggal) <= end);
-        dataset.sampling = dataset.sampling.filter(s => new Date(s.tanggal) <= end);
-        dataset.panen = dataset.panen.filter(p => new Date(p.tanggal) <= end);
+        dataset.benur = dataset.benur.filter(b => new Date(b.tanggal_tebar || b.tanggal) <= end);
+        dataset.operasional = dataset.operasional.filter(o => new Date(o.tanggal || o.tanggal_operasional) <= end);
+        dataset.sampling = dataset.sampling.filter(s => new Date(s.tanggal_sampling || s.tanggal) <= end);
+        dataset.panen = dataset.panen.filter(p => new Date(p.tanggal_panen || p.tanggal) <= end);
       }
 
       setReportData(dataset);
@@ -186,7 +186,7 @@ export default function LaporanPage() {
       const sheetBenurData = reportData.benur.map((b) => ({
         "Kolam Tambak": getTambakName(reportData.siklus.find(s => s.siklus_id === b.siklus_id)?.tambak_id || ""),
         "Komoditas": getKomoditasName(b.komoditas_id),
-        "Tanggal Tebar/Tanam": formatDate(b.tanggal_tebar),
+        "Tanggal Tebar/Tanam": formatDate(b.tanggal_tebar || b.tanggal),
         "Varietas / Jenis": b.jenis_udang,
         "Ukuran / Metode": b.ukuran_PL,
         "Jumlah / Berat": b.jumlah_benur,
@@ -199,7 +199,7 @@ export default function LaporanPage() {
       // 3. Sheet Operasional
       const sheetOpsData = reportData.operasional.map((o) => ({
         "Komoditas": getKomoditasName(o.komoditas_id),
-        "Tanggal": formatDate(o.tanggal),
+        "Tanggal": formatDate(o.tanggal || o.tanggal_operasional),
         "Kategori": o.kategori,
         "Nominal (Rp)": o.nominal,
         "Keterangan": o.keterangan || "-",
@@ -210,9 +210,9 @@ export default function LaporanPage() {
       // 4. Sheet Sampling
       const sheetSamplingData = reportData.sampling.map((s) => ({
         "Komoditas": getKomoditasName(s.komoditas_id),
-        "Tanggal": formatDate(s.tanggal),
-        "Jumlah Sample (ekor)": s.jumlah_udang || "-",
-        "Berat Total (gram)": s.berat_total,
+        "Tanggal": formatDate(s.tanggal_sampling || s.tanggal),
+        "Jumlah Sample (ekor)": s.jumlah_udang_sampling || s.jumlah_udang || "-",
+        "Berat Total (gram)": s.berat_total_sampling || s.berat_total,
         "ABW / Berat Rata-rata (gram)": s.abw,
         "Size (khusus udang)": s.size || "-",
       }));
@@ -222,7 +222,7 @@ export default function LaporanPage() {
       // 5. Sheet Panen
       const sheetPanenData = reportData.panen.map((p) => ({
         "Komoditas": getKomoditasName(p.komoditas_id),
-        "Tanggal": formatDate(p.tanggal),
+        "Tanggal": formatDate(p.tanggal_panen || p.tanggal),
         "Berat Panen (kg)": p.berat_panen,
         "Harga Jual / kg (Rp)": p.harga_jual,
         "Pendapatan (Rp)": p.pendapatan,
@@ -242,33 +242,47 @@ export default function LaporanPage() {
     if (!reportData) return;
 
     try {
-      const doc = new jsPDF();
-      (doc as any).setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.text("LAPORAN BUDIDAYA DAN KEUANGAN TAMBAKKU", 14, 20);
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+      // Header Banner
+      doc.setFillColor(37, 99, 235); // Blue 600
+      doc.rect(0, 0, 210, 26, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.text("TAMBAKKU - LAPORAN BUDIDAYA & KEUANGAN", 14, 12);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text("Digitalisasi Pencatatan & Operasional Manajemen Tambak Udang / Polikultur", 14, 19);
+
+      // Metadata Info Line
+      doc.setTextColor(71, 85, 105); // Slate 600
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
       
-      doc.setFontSize(10);
-      (doc as any).setFont("helvetica", "normal");
-      doc.text(`Dicetak pada: ${new Date().toLocaleDateString("id-ID")}`, 14, 26);
-      
-      let filterText = "Filter: Semua Kolam & Semua Siklus";
+      let filterText = "Semua Kolam Tambak & Semua Siklus";
       if (selectedTambakId !== "all") {
-        const tName = tambaks.find(t => t.tambak_id === selectedTambakId)?.nama_tambak || "";
-        filterText = `Filter Kolam: ${tName}`;
+        const tName = tambaks.find(t => t.tambak_id === selectedTambakId)?.nama_tambak || "Kolam";
+        filterText = `Kolam: ${tName}`;
         if (selectedSiklusId !== "all") {
           const sNum = cycles.find(c => c.siklus_id === selectedSiklusId)?.nomor_siklus;
           filterText += ` (Siklus #${sNum})`;
         }
       }
-      doc.text(filterText, 14, 32);
+
+      doc.text(`Filter Area : ${filterText}`, 14, 33);
+      doc.text(`Tanggal Cetak : ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`, 14, 38);
 
       // Section 1: Ringkasan Siklus Table
-      doc.setFontSize(12);
-      (doc as any).setFont("helvetica", "bold");
-      doc.text("1. Ringkasan Keuangan Siklus Tambak", 14, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text("1. RINGKASAN REKAPITULASI SIKLUS & KEUANGAN", 14, 46);
 
-      const siklusHeaders = [["Kolam", "Siklus", "Daftar Komoditas", "Mulai", "Selesai", "Status", "Modal", "Pendapatan", "Laba/Rugi"]];
-      const siklusRows = reportData.siklus.map((s) => {
+      const siklusHeaders = [["No", "Kolam Tambak", "Siklus", "Daftar Komoditas", "Mulai", "Status", "Total Modal", "Pendapatan", "Laba / Rugi"]];
+      const siklusRows = reportData.siklus.map((s, idx) => {
         const benurCost = reportData.benur.filter(b => b.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
         const opsCost = reportData.operasional.filter(o => o.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
         const modal = benurCost + opsCost;
@@ -277,78 +291,130 @@ export default function LaporanPage() {
         const sKomoditas = reportData.komoditas.filter(k => k.siklus_id === s.siklus_id).map(k => k.nama_komoditas).join(", ");
 
         return [
+          idx + 1,
           getTambakName(s.tambak_id),
           `#${s.nomor_siklus}`,
           sKomoditas || "Udang Vaname",
           formatDate(s.tanggal_mulai),
-          formatDate(s.tanggal_selesai),
-          s.status,
+          s.status.toUpperCase(),
           formatIDR(modal),
           formatIDR(revenue),
           formatIDR(laba)
         ];
       });
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         head: siklusHeaders,
         body: siklusRows,
-        startY: 46,
-        theme: "striped",
-        headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
-        bodyStyles: { fontSize: 7 },
+        startY: 49,
+        theme: "grid",
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 7.5, fontStyle: "bold", halign: "center" },
+        bodyStyles: { fontSize: 7, textColor: 40 },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 8 },
+          1: { cellWidth: 26 },
+          2: { halign: "center", cellWidth: 14 },
+          3: { cellWidth: 30 },
+          4: { halign: "center", cellWidth: 20 },
+          5: { halign: "center", cellWidth: 16 },
+          6: { halign: "right", cellWidth: 22 },
+          7: { halign: "right", cellWidth: 22 },
+          8: { halign: "right", cellWidth: 24 },
+        },
       });
 
-      let currentY = (doc as any).lastAutoTable.finalY + 12;
+      let currentY = (doc as any).lastAutoTable.finalY + 9;
 
-      // Section 2: Biaya Pengeluaran Table
-      if (currentY > 240) { doc.addPage(); currentY = 20; }
-      (doc as any).setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("2. Biaya Pengeluaran & Pembelian Bibit", 14, currentY);
+      // Section 2: Biaya Pengeluaran & Penebaran Bibit
+      if (currentY > 240) {
+        doc.addPage();
+        currentY = 20;
+      }
 
-      const opsHeaders = [["Tanggal", "Komoditas", "Kategori", "Nominal", "Keterangan"]];
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text("2. BIAYA PENGELUARAN OPERASIONAL & PENEBARAN BIBIT", 14, currentY);
+
+      const opsHeaders = [["Tanggal", "Komoditas", "Kategori", "Detail / Keterangan", "Nominal (Rp)"]];
       const rawOpsList = [
-        ...reportData.benur.map(b => ({ tanggal: b.tanggal_tebar, komoditas: getKomoditasName(b.komoditas_id), kategori: "Pembelian Bibit", nominal: b.total_harga, ket: `Ukuran ${b.ukuran_PL} (${formatNumber(b.jumlah_benur)} unit)` })),
-        ...reportData.operasional.map(o => ({ tanggal: o.tanggal, komoditas: getKomoditasName(o.komoditas_id), kategori: o.kategori, nominal: o.nominal, ket: o.keterangan || "-" }))
-      ].sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
+        ...reportData.benur.map(b => ({
+          tanggal: b.tanggal_tebar || b.tanggal,
+          komoditas: getKomoditasName(b.komoditas_id),
+          kategori: "Penebaran Bibit",
+          nominal: b.total_harga,
+          ket: `Ukuran ${b.ukuran_PL || "-"} (${formatNumber(b.jumlah_benur)} unit)`
+        })),
+        ...reportData.operasional.map(o => ({
+          tanggal: o.tanggal || o.tanggal_operasional,
+          komoditas: getKomoditasName(o.komoditas_id),
+          kategori: o.kategori,
+          nominal: o.nominal,
+          ket: o.keterangan || "-"
+        }))
+      ].sort((a, b) => new Date(a.tanggal || 0).getTime() - new Date(b.tanggal || 0).getTime());
 
       const opsRows = rawOpsList.map(item => [
         formatDate(item.tanggal),
         item.komoditas,
         item.kategori,
-        formatIDR(item.nominal),
-        item.ket
+        item.ket,
+        formatIDR(item.nominal)
       ]);
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         head: opsHeaders,
         body: opsRows,
-        startY: currentY + 4,
-        theme: "striped",
-        headStyles: { fillColor: [71, 85, 105], fontSize: 8 },
-        bodyStyles: { fontSize: 7 },
+        startY: currentY + 3,
+        theme: "grid",
+        headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 7.5, fontStyle: "bold" },
+        bodyStyles: { fontSize: 7, textColor: 40 },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 22 },
+          1: { cellWidth: 38 },
+          2: { cellWidth: 32 },
+          3: { cellWidth: 55 },
+          4: { halign: "right", cellWidth: 35 },
+        },
       });
 
-      currentY = (doc as any).lastAutoTable.finalY + 12;
+      currentY = (doc as any).lastAutoTable.finalY + 9;
 
-      // Section 3: Monitoring Pertumbuhan & Panen
-      if (currentY > 240) { doc.addPage(); currentY = 20; }
-      (doc as any).setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("3. Hasil Pertumbuhan (Sampling) & Panen Raya", 14, currentY);
+      // Section 3: Monitoring Pertumbuhan & Panen Raya
+      if (currentY > 240) {
+        doc.addPage();
+        currentY = 20;
+      }
 
-      const resultHeaders = [["Tanggal", "Komoditas", "Jenis Log", "Detail Biometrik / Panen", "Hasil Akhir"]];
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text("3. HASIL SAMPLING PERTUMBUHAN & PANEN RAYA", 14, currentY);
+
+      const resultHeaders = [["Tanggal", "Komoditas", "Jenis Log", "Detail Biometrik / Panen", "Hasil Akhir / Pendapatan"]];
       const rawResultsList = [
         ...reportData.sampling.map(s => {
-          const qty = Number(s.jumlah_udang || 0);
-          const wt = Number(s.berat_total || 0);
+          const qty = Number(s.jumlah_udang_sampling || s.jumlah_udang || 0);
+          const wt = Number(s.berat_total_sampling || s.berat_total || 0);
           const abw = s.abw;
-          const sizeText = s.size > 0 ? ` (Size ${s.size})` : "";
+          const sizeText = Number(s.size) > 0 ? ` (Size ${s.size})` : "";
           const detailText = qty > 0 ? `${formatNumber(qty)} unit | Total ${formatNumber(wt)} g` : `Total ${formatNumber(wt)} g`;
-          return { tanggal: s.tanggal, komoditas: getKomoditasName(s.komoditas_id), tipe: "Sampling Pertumbuhan", detail: detailText, hasil: `ABW ${abw}g${sizeText}` };
+          return {
+            tanggal: s.tanggal_sampling || s.tanggal,
+            komoditas: getKomoditasName(s.komoditas_id),
+            tipe: "Sampling Pertumbuhan",
+            detail: detailText,
+            hasil: `ABW ${abw}g${sizeText}`
+          };
         }),
-        ...reportData.panen.map(p => ({ tanggal: p.tanggal, komoditas: getKomoditasName(p.komoditas_id), tipe: "Panen Hasil", detail: `${formatNumber(p.berat_panen)} kg x ${formatIDR(p.harga_jual)}/kg`, hasil: `Pendapatan ${formatIDR(p.pendapatan)}` }))
-      ].sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
+        ...reportData.panen.map(p => ({
+          tanggal: p.tanggal_panen || p.tanggal,
+          komoditas: getKomoditasName(p.komoditas_id),
+          tipe: "Panen Hasil",
+          detail: `${formatNumber(p.berat_panen)} kg @ ${formatIDR(p.harga_jual)}/kg`,
+          hasil: `Pendapatan ${formatIDR(p.pendapatan)}`
+        }))
+      ].sort((a, b) => new Date(a.tanggal || 0).getTime() - new Date(b.tanggal || 0).getTime());
 
       const resultRows = rawResultsList.map(item => [
         formatDate(item.tanggal),
@@ -358,19 +424,39 @@ export default function LaporanPage() {
         item.hasil
       ]);
 
-      (doc as any).autoTable({
+      autoTable(doc, {
         head: resultHeaders,
         body: resultRows,
-        startY: currentY + 4,
-        theme: "striped",
-        headStyles: { fillColor: [22, 163, 74], fontSize: 8 },
-        bodyStyles: { fontSize: 7 },
+        startY: currentY + 3,
+        theme: "grid",
+        headStyles: { fillColor: [16, 185, 129], textColor: 255, fontSize: 7.5, fontStyle: "bold" },
+        bodyStyles: { fontSize: 7, textColor: 40 },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 22 },
+          1: { cellWidth: 38 },
+          2: { cellWidth: 32 },
+          3: { cellWidth: 50 },
+          4: { halign: "right", cellWidth: 40 },
+        },
+        didDrawPage: (data) => {
+          // Footer page numbering
+          const pageCount = (doc as any).internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(148, 163, 184); // Slate 400
+          doc.text(
+            `Halaman ${data.pageNumber} dari ${pageCount} - TambakKu Report Engine`,
+            105,
+            290,
+            { align: "center" }
+          );
+        }
       });
 
       doc.save("Laporan_TambakKu.pdf");
-      toast.success("PDF berhasil diekspor!");
+      toast.success("Dokumen PDF berhasil diunduh!");
     } catch (err: any) {
-      toast.error("Gagal mengekspor file PDF");
+      console.error("PDF Export Error:", err);
+      toast.error("Gagal mengekspor PDF: " + (err.message || "Terjadi kesalahan"));
     }
   };
 
