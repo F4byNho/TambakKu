@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const komoditasSchema = z.object({
   nama_komoditas: z.string().min(1, "Nama komoditas wajib diisi"),
-  jenis_komoditas: z.enum(["udang", "rumput_laut", "bandeng"], { message: "Jenis komoditas tidak valid" }),
+  jenis_komoditas: z.enum(["udang", "ikan", "rumput_laut", "bandeng", "lainnya"], { message: "Jenis komoditas tidak valid" }),
   tanggal_mulai: z
     .string()
     .min(1, "Tanggal mulai wajib diisi")

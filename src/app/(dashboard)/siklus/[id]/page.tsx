@@ -129,21 +129,7 @@ export default function SiklusDetailPage() {
       // Ambil komoditas aktif
       if (resKomoditas.ok) {
         const komoditasData = (await resKomoditas.json()).data || [];
-        // Jika data komoditas kosong, buat komoditas virtual "Udang Vaname" untuk backward compatibility data lama
-        if (komoditasData.length === 0) {
-          const virtualUdang: KomoditasItem = {
-            komoditas_id: "default-udang",
-            siklus_id: id,
-            user_id: currentCycle.user_id,
-            nama_komoditas: "Udang Vaname",
-            jenis_komoditas: "udang",
-            tanggal_mulai: currentCycle.tanggal_mulai,
-            status: currentCycle.status
-          };
-          setCommodities([virtualUdang]);
-        } else {
-          setCommodities(komoditasData);
-        }
+        setCommodities(komoditasData);
       }
     } catch (err: any) {
       toast.error(err.message || "Gagal memuat detail siklus");
@@ -353,25 +339,51 @@ export default function SiklusDetailPage() {
               </Button>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {commodities.map((k) => {
-                // Cari modal dan pendapatan khusus komoditas ini
-                const kBenurCost = benurLogs.filter(b => b.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
-                const kOpsCost = operasionalLogs.filter(o => o.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
-                const kModal = kBenurCost + kOpsCost;
-                const kRevenue = panenLogs.filter(p => p.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
-                const kLaba = kRevenue - kModal;
+            {commodities.length === 0 ? (
+              <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 p-8 text-center rounded-2xl shadow-none">
+                <div className="flex flex-col items-center justify-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                    <Plus className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900">Belum Ada Komoditas Ditambahkan</h4>
+                    <p className="text-xs text-slate-500 max-w-md mt-1">
+                      Siklus ini belum memiliki komoditas yang didaftarkan. Tambahkan komoditas pertama Anda (seperti Udang, Ikan, Rumput Laut, Kepiting, dll.) untuk mulai mencatat budidaya.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => setIsAddKomoditasOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl text-xs mt-2"
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" /> Tambah Komoditas Pertama
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {commodities.map((k) => {
+                  // Cari modal dan pendapatan khusus komoditas ini
+                  const kBenurCost = benurLogs.filter(b => b.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
+                  const kOpsCost = operasionalLogs.filter(o => o.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
+                  const kModal = kBenurCost + kOpsCost;
+                  const kRevenue = panenLogs.filter(p => p.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
+                  const kLaba = kRevenue - kModal;
 
-                return (
-                  <Card key={k.komoditas_id} className="border-slate-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden">
-                    <CardHeader className="pb-3 border-b border-slate-50/50 bg-slate-50/30 group-hover:bg-blue-50/10 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                          k.jenis_komoditas === "udang" ? "bg-amber-100 text-amber-800" : k.jenis_komoditas === "rumput_laut" ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"
-                        }`}>
-                          {k.jenis_komoditas}
-                        </span>
-                        {commodities.length > 1 && k.komoditas_id !== "default-udang" && (
+                  return (
+                    <Card key={k.komoditas_id} className="border-slate-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden">
+                      <CardHeader className="pb-3 border-b border-slate-50/50 bg-slate-50/30 group-hover:bg-blue-50/10 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            k.jenis_komoditas === "udang" 
+                              ? "bg-amber-100 text-amber-800" 
+                              : k.jenis_komoditas === "rumput_laut" 
+                              ? "bg-emerald-100 text-emerald-800" 
+                              : k.jenis_komoditas === "ikan" || k.jenis_komoditas === "bandeng"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}>
+                            {k.jenis_komoditas === "rumput_laut" ? "Rumput Laut" : k.jenis_komoditas}
+                          </span>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -384,11 +396,10 @@ export default function SiklusDetailPage() {
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                        )}
-                      </div>
-                      <CardTitle className="text-base font-bold text-slate-900 mt-2">{k.nama_komoditas}</CardTitle>
-                      <CardDescription className="text-[10px] text-slate-400">Dimulai sejak: {formatDate(k.tanggal_mulai)}</CardDescription>
-                    </CardHeader>
+                        </div>
+                        <CardTitle className="text-base font-bold text-slate-900 mt-2">{k.nama_komoditas}</CardTitle>
+                        <CardDescription className="text-[10px] text-slate-400">Dimulai sejak: {formatDate(k.tanggal_mulai)}</CardDescription>
+                      </CardHeader>
                     
                     <CardContent className="py-4 space-y-3 text-xs flex-grow">
                       <div className="flex justify-between items-center text-slate-500 border-b border-slate-50 pb-2">
