@@ -276,7 +276,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
                 <TableBody>
                   {logs.map((log) => (
                     <TableRow key={log.panen_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="text-center font-medium text-slate-600">{formatDate(log.tanggal)}</TableCell>
+                      <TableCell className="text-center font-medium text-slate-600">{formatDate((log as any).tanggal_panen || log.tanggal)}</TableCell>
                       <TableCell className="text-center font-semibold text-slate-800">{formatNumber(log.berat_panen)} kg</TableCell>
                       <TableCell className="text-center font-medium text-slate-500">{formatIDR(log.harga_jual)} / kg</TableCell>
                       <TableCell className="text-center font-bold text-green-600">{formatIDR(log.pendapatan)}</TableCell>

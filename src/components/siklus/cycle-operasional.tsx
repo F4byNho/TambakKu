@@ -260,7 +260,7 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
                 <TableBody>
                   {logs.map((log) => (
                     <TableRow key={log.operasional_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="text-center font-medium text-slate-600">{formatDate(log.tanggal)}</TableCell>
+                      <TableCell className="text-center font-medium text-slate-600">{formatDate(log.tanggal || (log as any).tanggal_operasional)}</TableCell>
                       <TableCell className="text-center">
                         <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700 border border-slate-150/10">
                           {log.kategori}

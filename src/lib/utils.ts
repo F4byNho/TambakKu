@@ -15,27 +15,41 @@ export function formatIDR(value: number): string {
   }).format(value);
 }
 
-export function formatNumber(value: number): string {
-  if (value === undefined || value === null || isNaN(value)) return "0";
-  return new Intl.NumberFormat("id-ID").format(value);
+export function formatNumber(value: number | string | null | undefined): string {
+  if (value === undefined || value === null || value === "") return "0";
+  const num = Number(value);
+  if (isNaN(num)) return "0";
+  return new Intl.NumberFormat("id-ID").format(num);
 }
 
 export function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "-";
+  if (!dateStr || dateStr === "undefined" || dateStr === "null") return "-";
   try {
-    const matches = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (matches) {
-      const [, year, month, day] = matches;
-      return `${day}-${month}-${year}`;
+    const str = String(dateStr).trim();
+    if (!str) return "-";
+
+    // Matching YYYY-MM-DD or YYYY/MM/DD or YYYY-MM-DDTHH:mm:ss...
+    const matchesISO = str.match(/^(\d{4})[-/\.](0?[1-9]|1[0-2])[-/\.](0?[1-9]|[12]\d|3[01])/);
+    if (matchesISO) {
+      const [, year, month, day] = matchesISO;
+      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
     }
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
+
+    // Matching DD/MM/YYYY or DD-MM-YYYY
+    const matchesDMY = str.match(/^(0?[1-9]|[12]\d|3[01])[-/\.](0?[1-9]|1[0-2])[-/\.](\d{4})/);
+    if (matchesDMY) {
+      const [, day, month, year] = matchesDMY;
+      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    }
+
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return str;
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
+    return `${day}/${month}/${year}`;
   } catch (e) {
-    return dateStr;
+    return String(dateStr);
   }
 }
 

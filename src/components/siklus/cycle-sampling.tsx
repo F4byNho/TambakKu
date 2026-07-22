@@ -375,7 +375,7 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
                 <TableBody>
                   {logs.map((log) => (
                     <TableRow key={log.sampling_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="text-center font-medium text-slate-600">{formatDate(log.tanggal)}</TableCell>
+                      <TableCell className="text-center font-medium text-slate-600">{formatDate((log as any).tanggal_sampling || log.tanggal)}</TableCell>
                       {!config.showSizeField && jenisKomoditas === "rumput_laut" ? null : (
                         <TableCell className="text-center font-semibold text-slate-700">{formatNumber(log.jumlah_udang)} ekor</TableCell>
                       )}

@@ -266,7 +266,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
                 <TableBody>
                   {logs.map((log) => (
                     <TableRow key={log.benur_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="text-center font-medium text-slate-700">{formatDate(log.tanggal_tebar)}</TableCell>
+                      <TableCell className="text-center font-medium text-slate-700">{formatDate(log.tanggal_tebar || (log as any).tanggal)}</TableCell>
                       <TableCell className="font-bold text-slate-900">{log.jenis_udang}</TableCell>
                       <TableCell className="text-center font-semibold text-slate-600">{log.ukuran_PL}</TableCell>
                       <TableCell className="text-center font-semibold text-slate-800">{formatNumber(log.jumlah_benur)} {config.stockingQtyUnit}</TableCell>
