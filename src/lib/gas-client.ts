@@ -1,6 +1,3 @@
-const GAS_WEB_APP_URL = process.env.GAS_WEB_APP_URL;
-const GAS_API_KEY = process.env.GAS_API_KEY;
-
 /**
  * Mengambil data dari Google Apps Script menggunakan metode GET
  */
@@ -9,6 +6,9 @@ export async function fetchFromGAS<T = any>(
   params: Record<string, string> = {}
 ): Promise<{ data: T | null; error?: string }> {
   try {
+    const GAS_WEB_APP_URL = process.env.GAS_WEB_APP_URL;
+    const GAS_API_KEY = process.env.GAS_API_KEY;
+
     if (!GAS_WEB_APP_URL) {
       throw new Error("GAS_WEB_APP_URL belum dikonfigurasi di berkas env");
     }
@@ -55,6 +55,9 @@ export async function postToGAS<T = any>(
   data: any
 ): Promise<{ success?: boolean; message?: string; error?: string; [key: string]: any }> {
   try {
+    const GAS_WEB_APP_URL = process.env.GAS_WEB_APP_URL;
+    const GAS_API_KEY = process.env.GAS_API_KEY;
+
     if (!GAS_WEB_APP_URL) {
       throw new Error("GAS_WEB_APP_URL belum dikonfigurasi di berkas env");
     }
