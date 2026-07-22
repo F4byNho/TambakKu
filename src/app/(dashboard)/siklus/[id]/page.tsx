@@ -428,6 +428,7 @@ export default function SiklusDetailPage() {
                 );
               })}
             </div>
+            )}
           </div>
 
           {/* Rincian Analisis Biaya Tambak (Gabungan) */}
