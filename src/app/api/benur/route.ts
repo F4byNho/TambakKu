@@ -13,12 +13,16 @@ export async function GET(req: Request) {
     
     const { searchParams } = new URL(req.url);
     const siklusId = searchParams.get("siklusId");
+    const komoditasId = searchParams.get("komoditasId");
     
     if (!siklusId) {
       return NextResponse.json({ error: "siklusId is required" }, { status: 400 });
     }
     
-    const res = await fetchFromGAS<any[]>("getBenur", { siklusId });
+    const res = await fetchFromGAS<any[]>("getBenur", { 
+      siklusId,
+      komoditasId: komoditasId || "" 
+    });
     
     if (res.error) {
       return NextResponse.json({ error: res.error }, { status: 400 });
@@ -28,7 +32,7 @@ export async function GET(req: Request) {
   } catch (error: any) {
     console.error("GET Benur API Error:", error);
     return NextResponse.json(
-      { error: error.message || "Gagal mengambil data benur" },
+      { error: error.message || "Gagal mengambil data tebar bibit" },
       { status: 500 }
     );
   }
@@ -73,13 +77,13 @@ export async function POST(req: Request) {
     
     return NextResponse.json({ 
       success: true, 
-      message: "Data benur berhasil dicatat", 
+      message: "Data penebaran/penanaman berhasil dicatat", 
       data: payload 
     });
   } catch (error: any) {
     console.error("POST Benur API Error:", error);
     return NextResponse.json(
-      { error: error.message || "Gagal mencatat data benur" },
+      { error: error.message || "Gagal mencatat data penebaran/penanaman" },
       { status: 500 }
     );
   }

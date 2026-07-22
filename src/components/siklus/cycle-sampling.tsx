@@ -6,7 +6,6 @@ import {
   Trash2, 
   Edit, 
   Loader2, 
-  LineChart as ChartIcon, 
   Scale,
   Calendar,
   AlertCircle
@@ -23,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { formatNumber, formatDate } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { samplingSchema, type SamplingInput } from "@/validators/budidaya";
+import { getCommodityConfig } from "@/lib/commodity-config";
 import {
   ResponsiveContainer,
   LineChart,
@@ -48,9 +48,11 @@ interface SamplingItem {
 interface CycleSamplingProps {
   siklusId: string;
   isCycleActive: boolean;
+  komoditasId: string;
+  jenisKomoditas: string;
 }
 
-export default function CycleSampling({ siklusId, isCycleActive }: CycleSamplingProps) {
+export default function CycleSampling({ siklusId, isCycleActive, komoditasId, jenisKomoditas }: CycleSamplingProps) {
   const [logs, setLogs] = useState<SamplingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +66,8 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
   // Active chart toggle: "abw" or "size"
   const [activeChart, setActiveChart] = useState<"abw" | "size">("abw");
 
+  const config = getCommodityConfig(jenisKomoditas);
+
   // Forms
   const {
     register: registerAdd,
@@ -75,8 +79,10 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
     resolver: zodResolver(samplingSchema) as any,
     defaultValues: {
       tanggal: new Date().toISOString().split("T")[0],
-      jumlah_udang: "" as any,
+      jumlah_udang: jenisKomoditas === "rumput_laut" ? 0 : ("" as any),
       berat_total: "" as any,
+      abw: jenisKomoditas === "rumput_laut" ? ("" as any) : 0,
+      komoditas_id: komoditasId,
     },
   });
 
@@ -93,29 +99,31 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
   // Watch values for real-time calculations preview
   const addQty = useWatch({ control: controlAdd, name: "jumlah_udang" }) || 0;
   const addWeight = useWatch({ control: controlAdd, name: "berat_total" }) || 0;
+  const addAbw = useWatch({ control: controlAdd, name: "abw" }) || 0;
   
-  const computedABWAdd = Number(addQty) > 0 ? (Number(addWeight) / Number(addQty)) : 0;
-  const computedSizeAdd = computedABWAdd > 0 ? Math.round(1000 / computedABWAdd) : 0;
+  const computedABWAdd = jenisKomoditas === "rumput_laut" ? Number(addAbw) : (Number(addQty) > 0 ? (Number(addWeight) / Number(addQty)) : 0);
+  const computedSizeAdd = config.showSizeField && computedABWAdd > 0 ? Math.round(1000 / computedABWAdd) : 0;
 
   const editQty = useWatch({ control: controlEdit, name: "jumlah_udang" }) || 0;
   const editWeight = useWatch({ control: controlEdit, name: "berat_total" }) || 0;
+  const editAbw = useWatch({ control: controlEdit, name: "abw" }) || 0;
   
-  const computedABWEdit = Number(editQty) > 0 ? (Number(editWeight) / Number(editQty)) : 0;
-  const computedSizeEdit = computedABWEdit > 0 ? Math.round(1000 / computedABWEdit) : 0;
+  const computedABWEdit = jenisKomoditas === "rumput_laut" ? Number(editAbw) : (Number(editQty) > 0 ? (Number(editWeight) / Number(editQty)) : 0);
+  const computedSizeEdit = config.showSizeField && computedABWEdit > 0 ? Math.round(1000 / computedABWEdit) : 0;
 
   useEffect(() => {
     fetchSamplingLogs();
-  }, [siklusId]);
+  }, [siklusId, komoditasId]);
 
   const fetchSamplingLogs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/sampling?siklusId=${siklusId}`);
-      if (!res.ok) throw new Error("Gagal mengambil data sampling");
+      const res = await fetch(`/api/sampling?siklusId=${siklusId}&komoditasId=${komoditasId}`);
+      if (!res.ok) throw new Error("Gagal mengambil data monitoring");
       const json = await res.json();
       setLogs(json.data || []);
     } catch (err: any) {
-      toast.error(err.message || "Gagal memuat log sampling");
+      toast.error(err.message || "Gagal memuat log");
     } finally {
       setIsLoading(false);
     }
@@ -133,18 +141,31 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
   const onAddSubmit = async (data: SamplingInput) => {
     setIsSubmitting(true);
     try {
+      const finalPayload = {
+        ...data,
+        abw: computedABWAdd,
+        size: computedSizeAdd,
+        komoditas_id: komoditasId
+      };
+      
       const res = await fetch("/api/sampling", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siklusId, ...data }),
+        body: JSON.stringify({ siklusId, ...finalPayload }),
       });
 
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Gagal mencatat sampling");
+      if (!res.ok) throw new Error(result.error || "Gagal menyimpan data");
 
-      toast.success("Data sampling berhasil disimpan!");
+      toast.success("Data monitoring berhasil disimpan!");
       setIsAddOpen(false);
-      resetAdd();
+      resetAdd({
+        tanggal: new Date().toISOString().split("T")[0],
+        jumlah_udang: jenisKomoditas === "rumput_laut" ? 0 : ("" as any),
+        berat_total: "" as any,
+        abw: jenisKomoditas === "rumput_laut" ? ("" as any) : 0,
+        komoditas_id: komoditasId,
+      });
       fetchSamplingLogs();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
@@ -157,16 +178,23 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
     if (!selectedLog) return;
     setIsSubmitting(true);
     try {
+      const finalPayload = {
+        ...data,
+        abw: computedABWEdit,
+        size: computedSizeEdit,
+        komoditas_id: komoditasId
+      };
+      
       const res = await fetch(`/api/sampling/${selectedLog.sampling_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(finalPayload),
       });
 
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal memperbarui data");
 
-      toast.success("Data sampling berhasil diperbarui!");
+      toast.success("Data monitoring berhasil diperbarui!");
       setIsEditOpen(false);
       setSelectedLog(null);
       fetchSamplingLogs();
@@ -188,7 +216,7 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal menghapus data");
 
-      toast.success("Catatan sampling berhasil dihapus!");
+      toast.success("Catatan monitoring berhasil dihapus!");
       setIsDeleteOpen(false);
       setSelectedLog(null);
       fetchSamplingLogs();
@@ -205,6 +233,8 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
       tanggal: log.tanggal,
       jumlah_udang: log.jumlah_udang,
       berat_total: log.berat_total,
+      abw: log.abw,
+      komoditas_id: komoditasId,
     });
     setIsEditOpen(true);
   };
@@ -220,10 +250,10 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-bold text-slate-900">
-            Pencatatan Sampling Udang
+            {config.growthLabel}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Pantau pertumbuhan udang secara periodik untuk menghitung rata-rata bobot (ABW) dan ukuran (Size).
+            Pantau pertumbuhan {config.name.toLowerCase()} secara periodik untuk mencatat indikator biomasa.
           </p>
         </div>
         {isCycleActive && (
@@ -231,7 +261,7 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
             onClick={() => setIsAddOpen(true)}
             className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm self-start sm:self-auto"
           >
-            <Plus className="mr-2 h-4 w-4" /> Catat Sampling
+            <Plus className="mr-2 h-4 w-4" /> Catat Pertumbuhan
           </Button>
         )}
       </div>
@@ -242,26 +272,28 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <div>
               <CardTitle className="text-sm font-bold text-slate-900">Grafik Tren Pertumbuhan</CardTitle>
-              <CardDescription className="text-xs text-slate-400">Visualisasi perkembangan berat (ABW) dan ukuran (Size) udang.</CardDescription>
+              <CardDescription className="text-xs text-slate-400">Visualisasi perkembangan berat rata-rata {config.name.toLowerCase()}.</CardDescription>
             </div>
-            <div className="flex bg-slate-100 p-0.75 rounded-lg border border-slate-150">
-              <Button
-                variant={activeChart === "abw" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setActiveChart("abw")}
-                className={`h-7.5 text-xs font-bold rounded-md px-3 ${activeChart === "abw" ? "bg-white shadow-sm text-blue-600" : "text-slate-500"}`}
-              >
-                ABW (g)
-              </Button>
-              <Button
-                variant={activeChart === "size" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setActiveChart("size")}
-                className={`h-7.5 text-xs font-bold rounded-md px-3 ${activeChart === "size" ? "bg-white shadow-sm text-green-600" : "text-slate-500"}`}
-              >
-                Size (ekor/kg)
-              </Button>
-            </div>
+            {config.showSizeField && (
+              <div className="flex bg-slate-100 p-0.75 rounded-lg border border-slate-150">
+                <Button
+                  variant={activeChart === "abw" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveChart("abw")}
+                  className={`h-7.5 text-xs font-bold rounded-md px-3 ${activeChart === "abw" ? "bg-white shadow-sm text-blue-600" : "text-slate-500"}`}
+                >
+                  ABW (g)
+                </Button>
+                <Button
+                  variant={activeChart === "size" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveChart("size")}
+                  className={`h-7.5 text-xs font-bold rounded-md px-3 ${activeChart === "size" ? "bg-white shadow-sm text-green-600" : "text-slate-500"}`}
+                >
+                  Size
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="h-64 sm:h-80 pl-1">
             <ResponsiveContainer width="100%" height="100%">
@@ -286,11 +318,11 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
                   labelStyle={{ fontWeight: "bold" }}
                 />
                 <Legend wrapperStyle={{ fontSize: "11px", fontWeight: "bold" }} />
-                {activeChart === "abw" ? (
+                {activeChart === "abw" || !config.showSizeField ? (
                   <Line
                     type="monotone"
                     dataKey="ABW"
-                    name="ABW (gram)"
+                    name={config.abwLabel}
                     stroke="#2563eb"
                     strokeWidth={3}
                     activeDot={{ r: 6 }}
@@ -319,7 +351,7 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
           <div className="flex h-48 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-semibold">Memuat riwayat sampling...</p>
+              <p className="text-xs text-slate-500 font-semibold">Memuat riwayat...</p>
             </div>
           </div>
         ) : logs.length > 0 ? (
@@ -328,11 +360,15 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow className="border-b border-slate-100">
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Tanggal Sampling</TableHead>
-                    <TableHead className="w-[130px] text-center font-bold text-slate-700">Jumlah Udang</TableHead>
-                    <TableHead className="w-[130px] text-center font-bold text-slate-700">Berat Total</TableHead>
-                    <TableHead className="w-[200px] text-center font-bold text-slate-700">Average Body Weight (ABW)</TableHead>
-                    <TableHead className="w-[150px] text-center font-bold text-slate-700">Size (ekor/kg)</TableHead>
+                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Tanggal</TableHead>
+                    {!config.showSizeField && jenisKomoditas === "rumput_laut" ? null : (
+                      <TableHead className="w-[130px] text-center font-bold text-slate-700">{config.growthQtyLabel}</TableHead>
+                    )}
+                    <TableHead className="w-[130px] text-center font-bold text-slate-700">{config.growthWeightLabel}</TableHead>
+                    <TableHead className="w-[200px] text-center font-bold text-slate-700">{config.abwLabel}</TableHead>
+                    {config.showSizeField && (
+                      <TableHead className="w-[150px] text-center font-bold text-slate-700">Size (ekor/kg)</TableHead>
+                    )}
                     {isCycleActive && <TableHead className="w-[120px] text-center font-bold text-slate-700">Aksi</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -340,10 +376,14 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
                   {logs.map((log) => (
                     <TableRow key={log.sampling_id} className="border-b border-slate-50 hover:bg-slate-50/50">
                       <TableCell className="text-center font-medium text-slate-600">{formatDate(log.tanggal)}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-700">{formatNumber(log.jumlah_udang)} ekor</TableCell>
+                      {!config.showSizeField && jenisKomoditas === "rumput_laut" ? null : (
+                        <TableCell className="text-center font-semibold text-slate-700">{formatNumber(log.jumlah_udang)} ekor</TableCell>
+                      )}
                       <TableCell className="text-center font-semibold text-slate-700">{formatNumber(log.berat_total)} gram</TableCell>
                       <TableCell className="text-center font-bold text-blue-600">{log.abw} g</TableCell>
-                      <TableCell className="text-center font-bold text-green-600">Size {log.size}</TableCell>
+                      {config.showSizeField && (
+                        <TableCell className="text-center font-bold text-green-600">Size {log.size}</TableCell>
+                      )}
                       {isCycleActive && (
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -378,16 +418,16 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
               <Scale className="h-6 w-6" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Sampling</h4>
+            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Pertumbuhan</h4>
             <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
-              Silakan lakukan sampling berat udang secara berkala untuk memantau nilai ABW dan Size udang vaname Anda.
+              Silakan lakukan pengukuran pertumbuhan {config.name.toLowerCase()} secara berkala untuk mencatat perkembangannya.
             </p>
             {isCycleActive && (
               <Button
                 onClick={() => setIsAddOpen(true)}
                 className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm text-xs h-9"
               >
-                <Plus className="mr-2 h-3.5 w-3.5" /> Catat Sampling
+                <Plus className="mr-2 h-3.5 w-3.5" /> Catat Pertumbuhan
               </Button>
             )}
           </div>
@@ -400,14 +440,14 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Catat Sampling Udang</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Catat {config.growthLabel}</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Ukur pertumbuhan udang dari jaring sampling Anda.
+              Ukur pertumbuhan {config.name.toLowerCase()} dari jaring/rumpun monitoring Anda.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddSubmit(onAddSubmit)} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label htmlFor="tanggal">Tanggal Sampling</Label>
+              <Label htmlFor="tanggal">Tanggal</Label>
               <Input
                 id="tanggal"
                 type="date"
@@ -420,55 +460,94 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="jumlah_udang">Jumlah Udang (ekor)</Label>
-                <Input
-                  id="jumlah_udang"
-                  type="number"
-                  placeholder="100"
-                  disabled={isSubmitting}
-                  {...registerAdd("jumlah_udang", { valueAsNumber: true })}
-                  className={addErrors.jumlah_udang ? "border-red-500 focus-visible:ring-red-500" : ""}
-                />
-                {addErrors.jumlah_udang && (
-                  <p className="text-xs text-red-500">{addErrors.jumlah_udang.message}</p>
-                )}
-              </div>
+            {jenisKomoditas === "rumput_laut" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="berat_total">{config.growthWeightLabel}</Label>
+                  <Input
+                    id="berat_total"
+                    type="number"
+                    placeholder="100"
+                    disabled={isSubmitting}
+                    {...registerAdd("berat_total", { valueAsNumber: true })}
+                    className={addErrors.berat_total ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {addErrors.berat_total && (
+                    <p className="text-xs text-red-500">{addErrors.berat_total.message}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="berat_total">Berat Total (gram)</Label>
-                <Input
-                  id="berat_total"
-                  type="number"
-                  placeholder="1000"
-                  disabled={isSubmitting}
-                  {...registerAdd("berat_total", { valueAsNumber: true })}
-                  className={addErrors.berat_total ? "border-red-500 focus-visible:ring-red-500" : ""}
-                />
-                {addErrors.berat_total && (
-                  <p className="text-xs text-red-500">{addErrors.berat_total.message}</p>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="abw">{config.abwLabel}</Label>
+                  <Input
+                    id="abw"
+                    type="number"
+                    placeholder="45"
+                    step="0.01"
+                    disabled={isSubmitting}
+                    {...registerAdd("abw", { valueAsNumber: true })}
+                    className={addErrors.abw ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {addErrors.abw && (
+                    <p className="text-xs text-red-500">{addErrors.abw.message}</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="jumlah_udang">{config.growthQtyLabel} (ekor)</Label>
+                  <Input
+                    id="jumlah_udang"
+                    type="number"
+                    placeholder="100"
+                    disabled={isSubmitting}
+                    {...registerAdd("jumlah_udang", { valueAsNumber: true })}
+                    className={addErrors.jumlah_udang ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {addErrors.jumlah_udang && (
+                    <p className="text-xs text-red-500">{addErrors.jumlah_udang.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="berat_total">{config.growthWeightLabel}</Label>
+                  <Input
+                    id="berat_total"
+                    type="number"
+                    placeholder="1000"
+                    disabled={isSubmitting}
+                    {...registerAdd("berat_total", { valueAsNumber: true })}
+                    className={addErrors.berat_total ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {addErrors.berat_total && (
+                    <p className="text-xs text-red-500">{addErrors.berat_total.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Real-time Math Preview Card */}
-            <div className="rounded-xl border border-blue-50 bg-blue-50/30 p-3.5 space-y-1.5 text-xs text-blue-900">
-              <div className="flex items-center gap-2 font-bold text-blue-800">
-                <AlertCircle className="h-4.5 w-4.5" />
-                Hasil Perhitungan Otomatis:
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-1 font-semibold">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase">Average Body Weight (ABW)</span>
-                  <span className="text-sm font-bold text-blue-700">{computedABWAdd.toFixed(2)} g</span>
+            {jenisKomoditas !== "rumput_laut" && (
+              <div className="rounded-xl border border-blue-50 bg-blue-50/30 p-3.5 space-y-1.5 text-xs text-blue-900">
+                <div className="flex items-center gap-2 font-bold text-blue-800">
+                  <AlertCircle className="h-4.5 w-4.5" />
+                  Hasil Perhitungan Otomatis:
                 </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase">Size (ekor/kg)</span>
-                  <span className="text-sm font-bold text-green-700">{computedSizeAdd ? `Size ${computedSizeAdd}` : "-"}</span>
+                <div className="grid grid-cols-2 gap-2 pt-1 font-semibold">
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase">ABW</span>
+                    <span className="text-sm font-bold text-blue-700">{computedABWAdd.toFixed(2)} g</span>
+                  </div>
+                  {config.showSizeField && (
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Size</span>
+                      <span className="text-sm font-bold text-green-700">{computedSizeAdd ? `Size ${computedSizeAdd}` : "-"}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2 sm:justify-end">
               <Button
@@ -503,14 +582,14 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Ubah Data Sampling</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Ubah Data {config.growthLabel}</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Perbarui catatan sampling jaring Anda.
+              Perbarui catatan monitoring pertumbuhan Anda.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label htmlFor="edit_tanggal">Tanggal Sampling</Label>
+              <Label htmlFor="edit_tanggal">Tanggal</Label>
               <Input
                 id="edit_tanggal"
                 type="date"
@@ -523,55 +602,94 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="edit_jumlah_udang">Jumlah Udang (ekor)</Label>
-                <Input
-                  id="edit_jumlah_udang"
-                  type="number"
-                  placeholder="100"
-                  disabled={isSubmitting}
-                  {...registerEdit("jumlah_udang", { valueAsNumber: true })}
-                  className={editErrors.jumlah_udang ? "border-red-500 focus-visible:ring-red-500" : ""}
-                />
-                {editErrors.jumlah_udang && (
-                  <p className="text-xs text-red-500">{editErrors.jumlah_udang.message}</p>
-                )}
-              </div>
+            {jenisKomoditas === "rumput_laut" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_berat_total">{config.growthWeightLabel}</Label>
+                  <Input
+                    id="edit_berat_total"
+                    type="number"
+                    placeholder="100"
+                    disabled={isSubmitting}
+                    {...registerEdit("berat_total", { valueAsNumber: true })}
+                    className={editErrors.berat_total ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {editErrors.berat_total && (
+                    <p className="text-xs text-red-500">{editErrors.berat_total.message}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit_berat_total">Berat Total (gram)</Label>
-                <Input
-                  id="edit_berat_total"
-                  type="number"
-                  placeholder="1000"
-                  disabled={isSubmitting}
-                  {...registerEdit("berat_total", { valueAsNumber: true })}
-                  className={editErrors.berat_total ? "border-red-500 focus-visible:ring-red-500" : ""}
-                />
-                {editErrors.berat_total && (
-                  <p className="text-xs text-red-500">{editErrors.berat_total.message}</p>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="edit_ab">{config.abwLabel}</Label>
+                  <Input
+                    id="edit_abw"
+                    type="number"
+                    placeholder="45"
+                    step="0.01"
+                    disabled={isSubmitting}
+                    {...registerEdit("abw", { valueAsNumber: true })}
+                    className={editErrors.abw ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {editErrors.abw && (
+                    <p className="text-xs text-red-500">{editErrors.abw.message}</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_jumlah_udang">{config.growthQtyLabel} (ekor)</Label>
+                  <Input
+                    id="edit_jumlah_udang"
+                    type="number"
+                    placeholder="100"
+                    disabled={isSubmitting}
+                    {...registerEdit("jumlah_udang", { valueAsNumber: true })}
+                    className={editErrors.jumlah_udang ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {editErrors.jumlah_udang && (
+                    <p className="text-xs text-red-500">{editErrors.jumlah_udang.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit_berat_total">{config.growthWeightLabel}</Label>
+                  <Input
+                    id="edit_berat_total"
+                    type="number"
+                    placeholder="1000"
+                    disabled={isSubmitting}
+                    {...registerEdit("berat_total", { valueAsNumber: true })}
+                    className={editErrors.berat_total ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {editErrors.berat_total && (
+                    <p className="text-xs text-red-500">{editErrors.berat_total.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Real-time Math Preview Card */}
-            <div className="rounded-xl border border-blue-50 bg-blue-50/30 p-3.5 space-y-1.5 text-xs text-blue-900">
-              <div className="flex items-center gap-2 font-bold text-blue-800">
-                <AlertCircle className="h-4.5 w-4.5" />
-                Hasil Perhitungan Otomatis:
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-1 font-semibold">
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase">Average Body Weight (ABW)</span>
-                  <span className="text-sm font-bold text-blue-700">{computedABWEdit.toFixed(2)} g</span>
+            {jenisKomoditas !== "rumput_laut" && (
+              <div className="rounded-xl border border-blue-50 bg-blue-50/30 p-3.5 space-y-1.5 text-xs text-blue-900">
+                <div className="flex items-center gap-2 font-bold text-blue-800">
+                  <AlertCircle className="h-4.5 w-4.5" />
+                  Hasil Perhitungan Otomatis:
                 </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px] uppercase">Size (ekor/kg)</span>
-                  <span className="text-sm font-bold text-green-700">{computedSizeEdit ? `Size ${computedSizeEdit}` : "-"}</span>
+                <div className="grid grid-cols-2 gap-2 pt-1 font-semibold">
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase">ABW</span>
+                    <span className="text-sm font-bold text-blue-700">{computedABWEdit.toFixed(2)} g</span>
+                  </div>
+                  {config.showSizeField && (
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Size</span>
+                      <span className="text-sm font-bold text-green-700">{computedSizeEdit ? `Size ${computedSizeEdit}` : "-"}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2 sm:justify-end">
               <Button
@@ -613,8 +731,8 @@ export default function CycleSampling({ siklusId, isCycleActive }: CycleSampling
           setSelectedLog(null);
         }}
         onConfirm={onDeleteConfirm}
-        title="Hapus Data Sampling?"
-        description={`Apakah Anda yakin ingin menghapus catatan sampling tanggal ${selectedLog?.tanggal} dengan ABW ${selectedLog?.abw} g dan Size ${selectedLog?.size} ini?`}
+        title="Hapus Data Monitoring?"
+        description={`Apakah Anda yakin ingin menghapus catatan monitoring tanggal ${selectedLog ? formatDate(selectedLog.tanggal) : ""} ini?`}
         isLoading={isSubmitting}
       />
     </div>

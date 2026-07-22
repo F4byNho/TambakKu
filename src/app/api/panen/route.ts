@@ -13,12 +13,16 @@ export async function GET(req: Request) {
     
     const { searchParams } = new URL(req.url);
     const siklusId = searchParams.get("siklusId");
+    const komoditasId = searchParams.get("komoditasId");
     
     if (!siklusId) {
       return NextResponse.json({ error: "siklusId is required" }, { status: 400 });
     }
     
-    const res = await fetchFromGAS<any[]>("getPanen", { siklusId });
+    const res = await fetchFromGAS<any[]>("getPanen", { 
+      siklusId,
+      komoditasId: komoditasId || ""
+    });
     
     if (res.error) {
       return NextResponse.json({ error: res.error }, { status: 400 });

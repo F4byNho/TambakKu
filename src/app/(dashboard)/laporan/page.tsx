@@ -40,6 +40,7 @@ interface SiklusItem {
 interface LaporanDataset {
   tambaks: TambakItem[];
   siklus: SiklusItem[];
+  komoditas: any[];
   benur: any[];
   operasional: any[];
   sampling: any[];
@@ -109,6 +110,7 @@ export default function LaporanPage() {
       let dataset: LaporanDataset = json.data || {
         tambaks: [],
         siklus: [],
+        komoditas: [],
         benur: [],
         operasional: [],
         sampling: [],
@@ -144,6 +146,11 @@ export default function LaporanPage() {
     return dataset?.tambaks.find((t) => t.tambak_id === id)?.nama_tambak || "Kolam";
   };
 
+  const getKomoditasName = (kId: string, dataset = reportData) => {
+    if (!kId) return "Seluruh Tambak";
+    return dataset?.komoditas.find((k) => k.komoditas_id === kId)?.nama_komoditas || "Udang Vaname";
+  };
+
   // --- EXPORT TO EXCEL ---
   const handleExportExcel = () => {
     if (!reportData) return;
@@ -156,14 +163,16 @@ export default function LaporanPage() {
         const benurCost = reportData.benur.filter(b => b.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
         const opsCost = reportData.operasional.filter(o => o.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
         const revenue = reportData.panen.filter(p => p.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
+        const sKomoditas = reportData.komoditas.filter(k => k.siklus_id === s.siklus_id).map(k => k.nama_komoditas).join(", ");
         
         return {
           "Kolam Tambak": getTambakName(s.tambak_id),
           "Siklus Ke-": s.nomor_siklus,
+          "Daftar Komoditas": sKomoditas || "Udang Vaname",
           "Tanggal Mulai": formatDate(s.tanggal_mulai),
           "Tanggal Selesai": formatDate(s.tanggal_selesai),
           "Status": s.status,
-          "Biaya Benur (Rp)": benurCost,
+          "Biaya Bibit (Rp)": benurCost,
           "Biaya Ops (Rp)": opsCost,
           "Total Modal (Rp)": benurCost + opsCost,
           "Total Pendapatan (Rp)": revenue,
@@ -173,21 +182,23 @@ export default function LaporanPage() {
       const wsSiklus = XLSX.utils.json_to_sheet(sheetSiklusData);
       XLSX.utils.book_append_sheet(wb, wsSiklus, "Ringkasan Siklus");
 
-      // 2. Sheet Benur
+      // 2. Sheet Benur / Bibit
       const sheetBenurData = reportData.benur.map((b) => ({
-        "Kolam Tambak": getTambakName(b.siklus_id),
-        "Tanggal Tebar": formatDate(b.tanggal_tebar),
-        "Jenis Udang": b.jenis_udang,
-        "Ukuran PL": b.ukuran_PL,
-        "Jumlah Benur (ekor)": b.jumlah_benur,
-        "Harga / Ekor (Rp)": b.harga_per_ekor,
+        "Kolam Tambak": getTambakName(reportData.siklus.find(s => s.siklus_id === b.siklus_id)?.tambak_id || ""),
+        "Komoditas": getKomoditasName(b.komoditas_id),
+        "Tanggal Tebar/Tanam": formatDate(b.tanggal_tebar),
+        "Varietas / Jenis": b.jenis_udang,
+        "Ukuran / Metode": b.ukuran_PL,
+        "Jumlah / Berat": b.jumlah_benur,
+        "Harga Satuan (Rp)": b.harga_per_ekor,
         "Total Harga (Rp)": b.total_harga,
       }));
       const wsBenur = XLSX.utils.json_to_sheet(sheetBenurData);
-      XLSX.utils.book_append_sheet(wb, wsBenur, "Penebaran Benur");
+      XLSX.utils.book_append_sheet(wb, wsBenur, "Log Penebaran Bibit");
 
       // 3. Sheet Operasional
       const sheetOpsData = reportData.operasional.map((o) => ({
+        "Komoditas": getKomoditasName(o.komoditas_id),
         "Tanggal": formatDate(o.tanggal),
         "Kategori": o.kategori,
         "Nominal (Rp)": o.nominal,
@@ -197,25 +208,20 @@ export default function LaporanPage() {
       XLSX.utils.book_append_sheet(wb, wsOps, "Operasional");
 
       // 4. Sheet Sampling
-      const sheetSamplingData = reportData.sampling.map((s) => {
-        const qty = Number(s.jumlah_udang || 0);
-        const wt = Number(s.berat_total || 0);
-        const abw = qty > 0 ? (wt / qty) : 0;
-        const size = abw > 0 ? (1000 / abw) : 0;
-
-        return {
-          "Tanggal": formatDate(s.tanggal),
-          "Jumlah Udang (ekor)": qty,
-          "Berat Total (gram)": wt,
-          "ABW (gram)": Number(abw.toFixed(2)),
-          "Size (ekor/kg)": Math.round(size),
-        };
-      });
+      const sheetSamplingData = reportData.sampling.map((s) => ({
+        "Komoditas": getKomoditasName(s.komoditas_id),
+        "Tanggal": formatDate(s.tanggal),
+        "Jumlah Sample (ekor)": s.jumlah_udang || "-",
+        "Berat Total (gram)": s.berat_total,
+        "ABW / Berat Rata-rata (gram)": s.abw,
+        "Size (khusus udang)": s.size || "-",
+      }));
       const wsSampling = XLSX.utils.json_to_sheet(sheetSamplingData);
-      XLSX.utils.book_append_sheet(wb, wsSampling, "Sampling Udang");
+      XLSX.utils.book_append_sheet(wb, wsSampling, "Monitoring Pertumbuhan");
 
       // 5. Sheet Panen
       const sheetPanenData = reportData.panen.map((p) => ({
+        "Komoditas": getKomoditasName(p.komoditas_id),
         "Tanggal": formatDate(p.tanggal),
         "Berat Panen (kg)": p.berat_panen,
         "Harga Jual / kg (Rp)": p.harga_jual,
@@ -259,19 +265,21 @@ export default function LaporanPage() {
       // Section 1: Ringkasan Siklus Table
       doc.setFontSize(12);
       (doc as any).setFont("helvetica", "bold");
-      doc.text("1. Ringkasan Keuangan Siklus", 14, 42);
+      doc.text("1. Ringkasan Keuangan Siklus Tambak", 14, 42);
 
-      const siklusHeaders = [["Kolam", "Siklus", "Mulai", "Selesai", "Status", "Modal", "Pendapatan", "Laba/Rugi"]];
+      const siklusHeaders = [["Kolam", "Siklus", "Daftar Komoditas", "Mulai", "Selesai", "Status", "Modal", "Pendapatan", "Laba/Rugi"]];
       const siklusRows = reportData.siklus.map((s) => {
         const benurCost = reportData.benur.filter(b => b.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
         const opsCost = reportData.operasional.filter(o => o.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
         const modal = benurCost + opsCost;
         const revenue = reportData.panen.filter(p => p.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
         const laba = revenue - modal;
+        const sKomoditas = reportData.komoditas.filter(k => k.siklus_id === s.siklus_id).map(k => k.nama_komoditas).join(", ");
 
         return [
           getTambakName(s.tambak_id),
           `#${s.nomor_siklus}`,
+          sKomoditas || "Udang Vaname",
           formatDate(s.tanggal_mulai),
           formatDate(s.tanggal_selesai),
           s.status,
@@ -286,26 +294,27 @@ export default function LaporanPage() {
         body: siklusRows,
         startY: 46,
         theme: "striped",
-        headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
-        bodyStyles: { fontSize: 8 },
+        headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+        bodyStyles: { fontSize: 7 },
       });
 
       let currentY = (doc as any).lastAutoTable.finalY + 12;
 
-      // Section 2: Biaya Operasional Table
+      // Section 2: Biaya Pengeluaran Table
       if (currentY > 240) { doc.addPage(); currentY = 20; }
       (doc as any).setFont("helvetica", "bold");
       doc.setFontSize(12);
-      doc.text("2. Biaya Operasional & Benur", 14, currentY);
+      doc.text("2. Biaya Pengeluaran & Pembelian Bibit", 14, currentY);
 
-      const opsHeaders = [["Tanggal", "Kategori", "Nominal", "Keterangan"]];
+      const opsHeaders = [["Tanggal", "Komoditas", "Kategori", "Nominal", "Keterangan"]];
       const rawOpsList = [
-        ...reportData.benur.map(b => ({ tanggal: b.tanggal_tebar, kategori: "Pembelian Benur", nominal: b.total_harga, ket: `Ukuran ${b.ukuran_PL} (${formatNumber(b.jumlah_benur)} ekor)` })),
-        ...reportData.operasional.map(o => ({ tanggal: o.tanggal, kategori: o.kategori, nominal: o.nominal, ket: o.keterangan || "-" }))
+        ...reportData.benur.map(b => ({ tanggal: b.tanggal_tebar, komoditas: getKomoditasName(b.komoditas_id), kategori: "Pembelian Bibit", nominal: b.total_harga, ket: `Ukuran ${b.ukuran_PL} (${formatNumber(b.jumlah_benur)} unit)` })),
+        ...reportData.operasional.map(o => ({ tanggal: o.tanggal, komoditas: getKomoditasName(o.komoditas_id), kategori: o.kategori, nominal: o.nominal, ket: o.keterangan || "-" }))
       ].sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
 
       const opsRows = rawOpsList.map(item => [
         formatDate(item.tanggal),
+        item.komoditas,
         item.kategori,
         formatIDR(item.nominal),
         item.ket
@@ -316,32 +325,34 @@ export default function LaporanPage() {
         body: opsRows,
         startY: currentY + 4,
         theme: "striped",
-        headStyles: { fillColor: [71, 85, 105], fontSize: 9 },
-        bodyStyles: { fontSize: 8 },
+        headStyles: { fillColor: [71, 85, 105], fontSize: 8 },
+        bodyStyles: { fontSize: 7 },
       });
 
       currentY = (doc as any).lastAutoTable.finalY + 12;
 
-      // Section 3: Sampling & Panen
+      // Section 3: Monitoring Pertumbuhan & Panen
       if (currentY > 240) { doc.addPage(); currentY = 20; }
       (doc as any).setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.text("3. Hasil Pertumbuhan (Sampling) & Panen Raya", 14, currentY);
 
-      const resultHeaders = [["Tanggal", "Jenis Log", "Detail Biometrik / Panen", "Hasil Akhir"]];
+      const resultHeaders = [["Tanggal", "Komoditas", "Jenis Log", "Detail Biometrik / Panen", "Hasil Akhir"]];
       const rawResultsList = [
         ...reportData.sampling.map(s => {
           const qty = Number(s.jumlah_udang || 0);
           const wt = Number(s.berat_total || 0);
-          const abw = qty > 0 ? (wt / qty) : 0;
-          const size = abw > 0 ? (1000 / abw) : 0;
-          return { tanggal: s.tanggal, tipe: "Sampling Udang", detail: `${formatNumber(qty)} ekor | Total ${formatNumber(wt)} g`, hasil: `ABW ${abw.toFixed(2)}g (Size ${Math.round(size)})` };
+          const abw = s.abw;
+          const sizeText = s.size > 0 ? ` (Size ${s.size})` : "";
+          const detailText = qty > 0 ? `${formatNumber(qty)} unit | Total ${formatNumber(wt)} g` : `Total ${formatNumber(wt)} g`;
+          return { tanggal: s.tanggal, komoditas: getKomoditasName(s.komoditas_id), tipe: "Sampling Pertumbuhan", detail: detailText, hasil: `ABW ${abw}g${sizeText}` };
         }),
-        ...reportData.panen.map(p => ({ tanggal: p.tanggal, tipe: "Hasil Panen", detail: `${formatNumber(p.berat_panen)} kg x ${formatIDR(p.harga_jual)}/kg`, hasil: `Pendapatan ${formatIDR(p.pendapatan)}` }))
+        ...reportData.panen.map(p => ({ tanggal: p.tanggal, komoditas: getKomoditasName(p.komoditas_id), tipe: "Panen Hasil", detail: `${formatNumber(p.berat_panen)} kg x ${formatIDR(p.harga_jual)}/kg`, hasil: `Pendapatan ${formatIDR(p.pendapatan)}` }))
       ].sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
 
       const resultRows = rawResultsList.map(item => [
         formatDate(item.tanggal),
+        item.komoditas,
         item.tipe,
         item.detail,
         item.hasil
@@ -352,8 +363,8 @@ export default function LaporanPage() {
         body: resultRows,
         startY: currentY + 4,
         theme: "striped",
-        headStyles: { fillColor: [22, 163, 74], fontSize: 9 },
-        bodyStyles: { fontSize: 8 },
+        headStyles: { fillColor: [22, 163, 74], fontSize: 8 },
+        bodyStyles: { fontSize: 7 },
       });
 
       doc.save("Laporan_TambakKu.pdf");

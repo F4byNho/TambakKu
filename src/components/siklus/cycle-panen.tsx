@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { panenSchema, type PanenInput } from "@/validators/budidaya";
+import { getCommodityConfig } from "@/lib/commodity-config";
 
 interface PanenItem {
   panen_id: string;
@@ -36,9 +37,11 @@ interface PanenItem {
 interface CyclePanenProps {
   siklusId: string;
   isCycleActive: boolean;
+  komoditasId: string;
+  jenisKomoditas: string;
 }
 
-export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps) {
+export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenisKomoditas }: CyclePanenProps) {
   const [logs, setLogs] = useState<PanenItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,6 +51,8 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const config = getCommodityConfig(jenisKomoditas);
 
   // Forms
   const {
@@ -62,6 +67,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
       tanggal: new Date().toISOString().split("T")[0],
       berat_panen: "" as any,
       harga_jual: "" as any,
+      komoditas_id: komoditasId,
     },
   });
 
@@ -86,12 +92,12 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
 
   useEffect(() => {
     fetchPanenLogs();
-  }, [siklusId]);
+  }, [siklusId, komoditasId]);
 
   const fetchPanenLogs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/panen?siklusId=${siklusId}`);
+      const res = await fetch(`/api/panen?siklusId=${siklusId}&komoditasId=${komoditasId}`);
       if (!res.ok) throw new Error("Gagal mengambil data panen");
       const json = await res.json();
       setLogs(json.data || []);
@@ -112,7 +118,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
       const res = await fetch("/api/panen", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siklusId, ...data }),
+        body: JSON.stringify({ siklusId, ...data, komoditas_id: komoditasId }),
       });
 
       const result = await res.json();
@@ -120,7 +126,12 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
 
       toast.success("Catatan hasil panen berhasil disimpan!");
       setIsAddOpen(false);
-      resetAdd();
+      resetAdd({
+        tanggal: new Date().toISOString().split("T")[0],
+        berat_panen: "" as any,
+        harga_jual: "" as any,
+        komoditas_id: komoditasId,
+      });
       fetchPanenLogs();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
@@ -136,7 +147,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
       const res = await fetch(`/api/panen/${selectedLog.panen_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, komoditas_id: komoditasId }),
       });
 
       const result = await res.json();
@@ -181,6 +192,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
       tanggal: log.tanggal,
       berat_panen: log.berat_panen,
       harga_jual: log.harga_jual,
+      komoditas_id: komoditasId,
     });
     setIsEditOpen(true);
   };
@@ -196,10 +208,10 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-bold text-slate-900">
-            Hasil Panen Siklus
+            {config.harvestLabel}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Log panen udang vaname (parsial atau total) beserta pendapatan yang diterima.
+            Log hasil panen {config.name.toLowerCase()} beserta pendapatan yang diterima.
           </p>
         </div>
         {isCycleActive && (
@@ -255,8 +267,8 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
                 <TableHeader className="bg-slate-50">
                   <TableRow className="border-b border-slate-100">
                     <TableHead className="w-[140px] text-center font-bold text-slate-700">Tanggal Panen</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">Berat Panen (kg)</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">Harga Jual / kg</TableHead>
+                    <TableHead className="w-[160px] text-center font-bold text-slate-700">{config.harvestWeightLabel}</TableHead>
+                    <TableHead className="w-[160px] text-center font-bold text-slate-700">{config.harvestPriceLabel}</TableHead>
                     <TableHead className="w-[180px] text-center font-bold text-slate-700">Total Pendapatan</TableHead>
                     {isCycleActive && <TableHead className="w-[120px] text-center font-bold text-slate-700">Aksi</TableHead>}
                   </TableRow>
@@ -302,9 +314,9 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
               <TrendingUp className="h-6 w-6" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Hasil Panen</h4>
+            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Panen</h4>
             <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
-              Pencatatan hasil panen (baik panen parsial/sebagian maupun panen raya) belum dicatat untuk siklus ini.
+              Pencatatan hasil panen {config.name.toLowerCase()} belum dilakukan. Silakan catat panen yang telah dicapai.
             </p>
             {isCycleActive && (
               <Button
@@ -324,9 +336,9 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Catat Hasil Panen</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Catat {config.harvestLabel}</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Masukkan hasil berat udang yang dipanen beserta nilai harga jual per kg.
+              Masukkan hasil panen komoditas {config.name.toLowerCase()} Anda.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddSubmit(onAddSubmit)} className="space-y-4 pt-2">
@@ -346,7 +358,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="berat_panen">Berat Udang (kg)</Label>
+                <Label htmlFor="berat_panen">{config.harvestWeightLabel}</Label>
                 <Input
                   id="berat_panen"
                   type="number"
@@ -361,7 +373,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="harga_jual">Harga per Kg (Rp)</Label>
+                <Label htmlFor="harga_jual">{config.harvestPriceLabel}</Label>
                 <Input
                   id="harga_jual"
                   type="number"
@@ -420,9 +432,9 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Ubah Data Hasil Panen</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Ubah Data {config.harvestLabel}</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Perbarui catatan nominal pendapatan atau berat panen Anda.
+              Perbarui catatan hasil panen Anda.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-4 pt-2">
@@ -442,7 +454,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="edit_berat_panen">Berat Udang (kg)</Label>
+                <Label htmlFor="edit_berat_panen">{config.harvestWeightLabel}</Label>
                 <Input
                   id="edit_berat_panen"
                   type="number"
@@ -457,7 +469,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit_harga_jual">Harga per Kg (Rp)</Label>
+                <Label htmlFor="edit_harga_jual">{config.harvestPriceLabel}</Label>
                 <Input
                   id="edit_harga_jual"
                   type="number"
@@ -524,7 +536,7 @@ export default function CyclePanen({ siklusId, isCycleActive }: CyclePanenProps)
         }}
         onConfirm={onDeleteConfirm}
         title="Hapus Catatan Panen?"
-        description={`Apakah Anda yakin ingin menghapus catatan hasil panen udang seberat ${formatNumber(selectedLog?.berat_panen || 0)} kg dengan total nilai pendapatan ${formatIDR(selectedLog?.pendapatan || 0)} ini?`}
+        description={`Apakah Anda yakin ingin menghapus catatan panen tanggal ${selectedLog ? formatDate(selectedLog.tanggal) : ""} ini?`}
         isLoading={isSubmitting}
       />
     </div>

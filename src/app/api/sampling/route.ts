@@ -13,12 +13,16 @@ export async function GET(req: Request) {
     
     const { searchParams } = new URL(req.url);
     const siklusId = searchParams.get("siklusId");
+    const komoditasId = searchParams.get("komoditasId");
     
     if (!siklusId) {
       return NextResponse.json({ error: "siklusId is required" }, { status: 400 });
     }
     
-    const res = await fetchFromGAS<any[]>("getSampling", { siklusId });
+    const res = await fetchFromGAS<any[]>("getSampling", { 
+      siklusId,
+      komoditasId: komoditasId || ""
+    });
     
     if (res.error) {
       return NextResponse.json({ error: res.error }, { status: 400 });
@@ -26,11 +30,14 @@ export async function GET(req: Request) {
     
     // Kembalikan data beserta ABW dan Size terhitung
     const processedData = (res.data || []).map((item) => {
+      const dbAbw = Number(item.abw || 0);
+      const dbSize = Number(item.size || 0);
+      
       const jumlahUdang = Number(item.jumlah_udang || 0);
       const beratTotal = Number(item.berat_total || 0);
       
-      const abw = jumlahUdang > 0 ? (beratTotal / jumlahUdang) : 0;
-      const size = abw > 0 ? (1000 / abw) : 0;
+      const abw = dbAbw > 0 ? dbAbw : (jumlahUdang > 0 ? (beratTotal / jumlahUdang) : 0);
+      const size = dbSize > 0 ? dbSize : (abw > 0 ? (1000 / abw) : 0);
       
       return {
         ...item,
@@ -88,13 +95,13 @@ export async function POST(req: Request) {
     
     return NextResponse.json({ 
       success: true, 
-      message: "Data sampling berhasil dicatat", 
+      message: "Data sampling/monitoring berhasil dicatat", 
       data: payload 
     });
   } catch (error: any) {
     console.error("POST Sampling API Error:", error);
     return NextResponse.json(
-      { error: error.message || "Gagal mencatat data sampling" },
+      { error: error.message || "Gagal mencatat data sampling/monitoring" },
       { status: 500 }
     );
   }

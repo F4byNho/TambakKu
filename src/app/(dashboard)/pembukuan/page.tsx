@@ -155,7 +155,16 @@ export default function PembukuanPage() {
                     const itemMargin = item.pendapatan > 0 ? (item.laba / item.pendapatan) * 100 : 0;
                     return (
                       <TableRow key={item.siklus_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                        <TableCell className="font-bold text-slate-900">{item.nama_tambak}</TableCell>
+                        <TableCell className="font-bold text-slate-900 py-3">
+                          <div>{item.nama_tambak}</div>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {((item as any).komoditas && (item as any).komoditas.length > 0 ? (item as any).komoditas : ["Udang Vaname"]).map((kom: string, idx: number) => (
+                              <span key={idx} className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/55 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                                {kom}
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-center font-semibold text-slate-800">Siklus #{item.nomor_siklus}</TableCell>
                         <TableCell className="text-center">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${

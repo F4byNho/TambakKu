@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { benurSchema, type BenurInput } from "@/validators/budidaya";
+import { getCommodityConfig } from "@/lib/commodity-config";
 
 interface BenurItem {
   benur_id: string;
@@ -38,9 +39,11 @@ interface BenurItem {
 interface CycleBenurProps {
   siklusId: string;
   isCycleActive: boolean;
+  komoditasId: string;
+  jenisKomoditas: string;
 }
 
-export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps) {
+export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenisKomoditas }: CycleBenurProps) {
   const [logs, setLogs] = useState<BenurItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,6 +53,8 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const config = getCommodityConfig(jenisKomoditas);
 
   // Forms
   const {
@@ -62,10 +67,11 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
     resolver: zodResolver(benurSchema) as any,
     defaultValues: {
       tanggal_tebar: new Date().toISOString().split("T")[0],
-      jenis_udang: "Vaname",
-      ukuran_PL: "PL-10",
+      jenis_udang: jenisKomoditas === "udang" ? "Vaname" : jenisKomoditas === "rumput_laut" ? "Gracilaria" : "Bandeng Lokal",
+      ukuran_PL: jenisKomoditas === "udang" ? "PL-10" : jenisKomoditas === "rumput_laut" ? "Longline" : "2-3 cm",
       jumlah_benur: "" as any,
       harga_per_ekor: "" as any,
+      komoditas_id: komoditasId,
     },
   });
 
@@ -90,17 +96,17 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
 
   useEffect(() => {
     fetchBenurLogs();
-  }, [siklusId]);
+  }, [siklusId, komoditasId]);
 
   const fetchBenurLogs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/benur?siklusId=${siklusId}`);
-      if (!res.ok) throw new Error("Gagal mengambil data penebaran benur");
+      const res = await fetch(`/api/benur?siklusId=${siklusId}&komoditasId=${komoditasId}`);
+      if (!res.ok) throw new Error("Gagal mengambil data penebaran/penanaman");
       const json = await res.json();
       setLogs(json.data || []);
     } catch (err: any) {
-      toast.error(err.message || "Gagal memuat log benur");
+      toast.error(err.message || "Gagal memuat log");
     } finally {
       setIsLoading(false);
     }
@@ -112,15 +118,22 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
       const res = await fetch("/api/benur", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siklusId, ...data }),
+        body: JSON.stringify({ siklusId, ...data, komoditas_id: komoditasId }),
       });
 
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Gagal mencatat penebaran benur");
+      if (!res.ok) throw new Error(result.error || "Gagal menyimpan data");
 
-      toast.success("Catatan penebaran benur berhasil disimpan!");
+      toast.success("Catatan penebaran/penanaman berhasil disimpan!");
       setIsAddOpen(false);
-      resetAdd();
+      resetAdd({
+        tanggal_tebar: new Date().toISOString().split("T")[0],
+        jenis_udang: jenisKomoditas === "udang" ? "Vaname" : jenisKomoditas === "rumput_laut" ? "Gracilaria" : "Bandeng Lokal",
+        ukuran_PL: jenisKomoditas === "udang" ? "PL-10" : jenisKomoditas === "rumput_laut" ? "Longline" : "2-3 cm",
+        jumlah_benur: "" as any,
+        harga_per_ekor: "" as any,
+        komoditas_id: komoditasId,
+      });
       fetchBenurLogs();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
@@ -136,13 +149,13 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
       const res = await fetch(`/api/benur/${selectedLog.benur_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, komoditas_id: komoditasId }),
       });
 
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal memperbarui data");
 
-      toast.success("Data penebaran benur berhasil diperbarui!");
+      toast.success("Data penebaran/penanaman berhasil diperbarui!");
       setIsEditOpen(false);
       setSelectedLog(null);
       fetchBenurLogs();
@@ -164,7 +177,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal menghapus data");
 
-      toast.success("Catatan penebaran benur berhasil dihapus!");
+      toast.success("Catatan penebaran/penanaman berhasil dihapus!");
       setIsDeleteOpen(false);
       setSelectedLog(null);
       fetchBenurLogs();
@@ -183,6 +196,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
       ukuran_PL: log.ukuran_PL,
       jumlah_benur: log.jumlah_benur,
       harga_per_ekor: log.harga_per_ekor,
+      komoditas_id: komoditasId,
     });
     setIsEditOpen(true);
   };
@@ -198,10 +212,10 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-bold text-slate-900">
-            Riwayat Penebaran Benur
+            Riwayat {config.stockingLabel}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Log tebar benur udang vaname/windu pada siklus ini.
+            Log {config.stockingLabel.toLowerCase()} {config.name.toLowerCase()} pada siklus ini.
           </p>
         </div>
         {isCycleActive && (
@@ -209,7 +223,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
             onClick={() => setIsAddOpen(true)}
             className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm self-start sm:self-auto"
           >
-            <Plus className="mr-2 h-4 w-4" /> Catat Tebar Benur
+            <Plus className="mr-2 h-4 w-4" /> Catat {config.stockingLabel}
           </Button>
         )}
       </div>
@@ -220,7 +234,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
           <div className="flex h-48 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-semibold">Memuat riwayat benur...</p>
+              <p className="text-xs text-slate-500 font-semibold">Memuat riwayat...</p>
             </div>
           </div>
         ) : logs.length > 0 ? (
@@ -229,11 +243,11 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow className="border-b border-slate-100">
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Tanggal Tebar</TableHead>
-                    <TableHead className="font-bold text-slate-700">Jenis Udang</TableHead>
-                    <TableHead className="w-[120px] text-center font-bold text-slate-700">Ukuran (PL)</TableHead>
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Jumlah Benur</TableHead>
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Harga / Ekor</TableHead>
+                    <TableHead className="w-[140px] text-center font-bold text-slate-700">{config.stockingDateLabel}</TableHead>
+                    <TableHead className="font-bold text-slate-700">{config.stockingNameLabel}</TableHead>
+                    <TableHead className="w-[120px] text-center font-bold text-slate-700">{config.stockingSizeLabel}</TableHead>
+                    <TableHead className="w-[140px] text-center font-bold text-slate-700">{config.stockingQtyLabel}</TableHead>
+                    <TableHead className="w-[140px] text-center font-bold text-slate-700">{config.stockingPriceLabel}</TableHead>
                     <TableHead className="w-[160px] text-center font-bold text-slate-700">Total Harga</TableHead>
                     {isCycleActive && <TableHead className="w-[120px] text-center font-bold text-slate-700">Aksi</TableHead>}
                   </TableRow>
@@ -244,7 +258,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
                       <TableCell className="text-center font-medium text-slate-700">{formatDate(log.tanggal_tebar)}</TableCell>
                       <TableCell className="font-bold text-slate-900">{log.jenis_udang}</TableCell>
                       <TableCell className="text-center font-semibold text-slate-600">{log.ukuran_PL}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-800">{formatNumber(log.jumlah_benur)} ekor</TableCell>
+                      <TableCell className="text-center font-semibold text-slate-800">{formatNumber(log.jumlah_benur)} {config.stockingQtyUnit}</TableCell>
                       <TableCell className="text-center font-medium text-slate-500">{formatIDR(log.harga_per_ekor)}</TableCell>
                       <TableCell className="text-center font-bold text-slate-900">{formatIDR(log.total_harga)}</TableCell>
                       {isCycleActive && (
@@ -281,16 +295,16 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
               <Layers className="h-6 w-6" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Penebaran Benur</h4>
+            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada {config.stockingLabel}</h4>
             <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
-              Penebaran benur pada siklus ini belum dicatat. Silakan lakukan pencatatan benur yang Anda tebar.
+              Pencatatan {config.stockingLabel.toLowerCase()} pada siklus ini belum dicatat. Silakan lakukan pencatatan tebar/tanam baru.
             </p>
             {isCycleActive && (
               <Button
                 onClick={() => setIsAddOpen(true)}
                 className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm text-xs h-9"
               >
-                <Plus className="mr-2 h-3.5 w-3.5" /> Catat Tebar Benur
+                <Plus className="mr-2 h-3.5 w-3.5" /> Catat {config.stockingLabel}
               </Button>
             )}
           </div>
@@ -303,14 +317,14 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Catat Tebar Benur</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Catat {config.stockingLabel}</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Masukkan detail pembelian dan pelepasan benur udang.
+              Masukkan detail pembelian dan pelepasan {config.name.toLowerCase()} Anda.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddSubmit(onAddSubmit)} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label htmlFor="tanggal_tebar">Tanggal Tebar</Label>
+              <Label htmlFor="tanggal_tebar">{config.stockingDateLabel}</Label>
               <Input
                 id="tanggal_tebar"
                 type="date"
@@ -325,10 +339,10 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="jenis_udang">Jenis Udang</Label>
+                <Label htmlFor="jenis_udang">{config.stockingNameLabel}</Label>
                 <Input
                   id="jenis_udang"
-                  placeholder="Vaname"
+                  placeholder={config.stockingNamePlaceholder}
                   disabled={isSubmitting}
                   {...registerAdd("jenis_udang")}
                   className={addErrors.jenis_udang ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -339,10 +353,10 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ukuran_PL">Ukuran PL</Label>
+                <Label htmlFor="ukuran_PL">{config.stockingSizeLabel}</Label>
                 <Input
                   id="ukuran_PL"
-                  placeholder="PL-10"
+                  placeholder={config.stockingSizePlaceholder}
                   disabled={isSubmitting}
                   {...registerAdd("ukuran_PL")}
                   className={addErrors.ukuran_PL ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -355,7 +369,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="jumlah_benur">Jumlah Benur (ekor)</Label>
+                <Label htmlFor="jumlah_benur">{config.stockingQtyLabel}</Label>
                 <Input
                   id="jumlah_benur"
                   type="number"
@@ -370,7 +384,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="harga_per_ekor">Harga per Ekor (Rp)</Label>
+                <Label htmlFor="harga_per_ekor">{config.stockingPriceLabel}</Label>
                 <Input
                   id="harga_per_ekor"
                   type="number"
@@ -429,14 +443,14 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Ubah Data Tebar Benur</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Ubah Data {config.stockingLabel}</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Perbarui catatan pembelian/penebaran benur Anda.
+              Perbarui catatan pembelian/penebaran {config.name.toLowerCase()} Anda.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label htmlFor="edit_tanggal_tebar">Tanggal Tebar</Label>
+              <Label htmlFor="edit_tanggal_tebar">{config.stockingDateLabel}</Label>
               <Input
                 id="edit_tanggal_tebar"
                 type="date"
@@ -451,10 +465,10 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="edit_jenis_udang">Jenis Udang</Label>
+                <Label htmlFor="edit_jenis_udang">{config.stockingNameLabel}</Label>
                 <Input
                   id="edit_jenis_udang"
-                  placeholder="Vaname"
+                  placeholder={config.stockingNamePlaceholder}
                   disabled={isSubmitting}
                   {...registerEdit("jenis_udang")}
                   className={editErrors.jenis_udang ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -465,10 +479,10 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit_ukuran_PL">Ukuran PL</Label>
+                <Label htmlFor="edit_ukuran_PL">{config.stockingSizeLabel}</Label>
                 <Input
                   id="edit_ukuran_PL"
-                  placeholder="PL-10"
+                  placeholder={config.stockingSizePlaceholder}
                   disabled={isSubmitting}
                   {...registerEdit("ukuran_PL")}
                   className={editErrors.ukuran_PL ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -481,7 +495,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="edit_jumlah_benur">Jumlah Benur (ekor)</Label>
+                <Label htmlFor="edit_jumlah_benur">{config.stockingQtyLabel}</Label>
                 <Input
                   id="edit_jumlah_benur"
                   type="number"
@@ -496,7 +510,7 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit_harga_per_ekor">Harga per Ekor (Rp)</Label>
+                <Label htmlFor="edit_harga_per_ekor">{config.stockingPriceLabel}</Label>
                 <Input
                   id="edit_harga_per_ekor"
                   type="number"
@@ -562,8 +576,8 @@ export default function CycleBenur({ siklusId, isCycleActive }: CycleBenurProps)
           setSelectedLog(null);
         }}
         onConfirm={onDeleteConfirm}
-        title="Hapus Catatan Benur?"
-        description={`Apakah Anda yakin ingin menghapus catatan penebaran benur "${selectedLog?.jenis_udang} - ${selectedLog?.ukuran_PL}" sebanyak ${formatNumber(selectedLog?.jumlah_benur || 0)} ekor ini? Data biaya tebar benur akan terhapus dari neraca modal siklus.`}
+        title={`Hapus Catatan ${config.stockingLabel}?`}
+        description={`Apakah Anda yakin ingin menghapus catatan "${selectedLog?.jenis_udang} - ${selectedLog?.ukuran_PL}" sebanyak ${formatNumber(selectedLog?.jumlah_benur || 0)} ${config.stockingQtyUnit} ini? Data biaya tebar/tanam akan terhapus dari neraca modal.`}
         isLoading={isSubmitting}
       />
     </div>

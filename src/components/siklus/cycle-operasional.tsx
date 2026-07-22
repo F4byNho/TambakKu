@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { operasionalSchema, type OperasionalInput } from "@/validators/budidaya";
+import { getCommodityConfig } from "@/lib/commodity-config";
 
 interface OperasionalItem {
   operasional_id: string;
@@ -31,16 +32,17 @@ interface OperasionalItem {
   kategori: string;
   nominal: number;
   keterangan: string;
+  komoditas_id?: string;
 }
 
 interface CycleOperasionalProps {
   siklusId: string;
   isCycleActive: boolean;
+  komoditasId?: string;
+  jenisKomoditas?: string;
 }
 
-
-
-export default function CycleOperasional({ siklusId, isCycleActive }: CycleOperasionalProps) {
+export default function CycleOperasional({ siklusId, isCycleActive, komoditasId, jenisKomoditas }: CycleOperasionalProps) {
   const [logs, setLogs] = useState<OperasionalItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,6 +66,7 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
       kategori: "",
       nominal: "" as any,
       keterangan: "",
+      komoditas_id: komoditasId || "",
     },
   });
 
@@ -78,17 +81,20 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
 
   useEffect(() => {
     fetchOperasionalLogs();
-  }, [siklusId]);
+  }, [siklusId, komoditasId]);
 
   const fetchOperasionalLogs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/operasional?siklusId=${siklusId}`);
-      if (!res.ok) throw new Error("Gagal mengambil data operasional");
+      const url = komoditasId 
+        ? `/api/operasional?siklusId=${siklusId}&komoditasId=${komoditasId}`
+        : `/api/operasional?siklusId=${siklusId}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Gagal mengambil data pengeluaran");
       const json = await res.json();
       setLogs(json.data || []);
     } catch (err: any) {
-      toast.error(err.message || "Gagal memuat log operasional");
+      toast.error(err.message || "Gagal memuat log");
     } finally {
       setIsLoading(false);
     }
@@ -103,15 +109,21 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
       const res = await fetch("/api/operasional", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siklusId, ...data }),
+        body: JSON.stringify({ siklusId, ...data, komoditas_id: komoditasId || "" }),
       });
 
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal mencatat pengeluaran");
 
-      toast.success("Biaya operasional berhasil dicatat!");
+      toast.success("Biaya pengeluaran berhasil dicatat!");
       setIsAddOpen(false);
-      resetAdd();
+      resetAdd({
+        tanggal: new Date().toISOString().split("T")[0],
+        kategori: "",
+        nominal: "" as any,
+        keterangan: "",
+        komoditas_id: komoditasId || "",
+      });
       fetchOperasionalLogs();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
@@ -127,13 +139,13 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
       const res = await fetch(`/api/operasional/${selectedLog.operasional_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, komoditas_id: komoditasId || "" }),
       });
 
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal memperbarui data");
 
-      toast.success("Data operasional berhasil diperbarui!");
+      toast.success("Data pengeluaran berhasil diperbarui!");
       setIsEditOpen(false);
       setSelectedLog(null);
       fetchOperasionalLogs();
@@ -173,6 +185,7 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
       kategori: log.kategori as any,
       nominal: log.nominal,
       keterangan: log.keterangan,
+      komoditas_id: komoditasId || "",
     });
     setIsEditOpen(true);
   };
@@ -188,10 +201,10 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-bold text-slate-900">
-            Biaya Operasional Siklus
+            Biaya Pengeluaran {jenisKomoditas ? `Operasional ${getCommodityConfig(jenisKomoditas).name}` : "Siklus"}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Catatan pengeluaran operasional (pakan, obat, listrik, bahan bakar, dll.) untuk kolam ini.
+            Catatan pengeluaran operasional (seperti pakan, solar, probiotik) untuk {jenisKomoditas ? getCommodityConfig(jenisKomoditas).name.toLowerCase() : "kolam ini"}.
           </p>
         </div>
         {isCycleActive && (
@@ -217,7 +230,7 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
             </div>
           </div>
           <div className="text-xs text-slate-400">
-            *Biaya gabungan seluruh pengeluaran operasional di luar benur.
+            *Biaya gabungan seluruh pengeluaran operasional di luar bibit/benur.
           </div>
         </CardContent>
       </Card>
@@ -238,7 +251,7 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
                 <TableHeader className="bg-slate-50">
                   <TableRow className="border-b border-slate-100">
                     <TableHead className="w-[140px] text-center font-bold text-slate-700">Tanggal</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">Kategori</TableHead>
+                    <TableHead className="w-[160px] text-center font-bold text-slate-700">Jenis/Kategori</TableHead>
                     <TableHead className="w-[150px] text-center font-bold text-slate-700">Nominal</TableHead>
                     <TableHead className="font-bold text-slate-700 pl-4">Keterangan</TableHead>
                     {isCycleActive && <TableHead className="w-[120px] text-center font-bold text-slate-700">Aksi</TableHead>}
@@ -293,7 +306,7 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
             </div>
             <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Biaya Operasional</h4>
             <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
-              Pengeluaran operasional (seperti pakan, solar, probiotik) belum dicatat untuk siklus kolam ini.
+              Pengeluaran operasional belum dicatat untuk {jenisKomoditas ? getCommodityConfig(jenisKomoditas).name.toLowerCase() : "siklus kolam ini"}.
             </p>
             {isCycleActive && (
               <Button
@@ -313,9 +326,9 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Catat Pengeluaran Baru</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Catat Pengeluaran</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Isi data pengeluaran operasional untuk siklus budidaya kolam.
+              Masukkan detail nominal pengeluaran biaya Anda.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddSubmit(onAddSubmit)} className="space-y-4 pt-2">
@@ -334,11 +347,11 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="kategori">Nama/Kategori Pengeluaran</Label>
+              <Label htmlFor="kategori">Nama / Kategori Pengeluaran</Label>
               <Input
                 id="kategori"
+                placeholder="Misal: Pakan, Solar, Obat-obatan, Gaji Pekerja"
                 disabled={isSubmitting}
-                placeholder="Misal: Pakan, Solar, Listrik, Upah, dll"
                 {...registerAdd("kategori")}
                 className={addErrors.kategori ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
@@ -348,11 +361,11 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nominal">Nominal Pengeluaran (Rp)</Label>
+              <Label htmlFor="nominal">Nominal Biaya (Rp)</Label>
               <Input
                 id="nominal"
                 type="number"
-                placeholder="250000"
+                placeholder="100000"
                 disabled={isSubmitting}
                 {...registerAdd("nominal", { valueAsNumber: true })}
                 className={addErrors.nominal ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -363,10 +376,10 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="keterangan">Keterangan / Catatan</Label>
+              <Label htmlFor="keterangan">Keterangan Opsional</Label>
               <Input
                 id="keterangan"
-                placeholder="Membeli 5 karung pakan pertumbuhan"
+                placeholder="Catatan tambahan (misal: Beli 2 karung pakan merk X)"
                 disabled={isSubmitting}
                 {...registerAdd("keterangan")}
                 className={addErrors.keterangan ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -376,7 +389,7 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
               )}
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4 sm:justify-end">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2 sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -411,7 +424,7 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-900">Ubah Data Pengeluaran</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Perbarui rincian catatan biaya operasional Anda.
+              Perbarui rincian data pengeluaran operasional Anda.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-4 pt-2">
@@ -430,11 +443,11 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit_kategori">Nama/Kategori Pengeluaran</Label>
+              <Label htmlFor="edit_kategori">Nama / Kategori Pengeluaran</Label>
               <Input
                 id="edit_kategori"
+                placeholder="Misal: Pakan, Solar, Obat-obatan"
                 disabled={isSubmitting}
-                placeholder="Misal: Pakan, Solar, Listrik, Upah, dll"
                 {...registerEdit("kategori")}
                 className={editErrors.kategori ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
@@ -444,11 +457,11 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit_nominal">Nominal Pengeluaran (Rp)</Label>
+              <Label htmlFor="edit_nominal">Nominal Biaya (Rp)</Label>
               <Input
                 id="edit_nominal"
                 type="number"
-                placeholder="250000"
+                placeholder="100000"
                 disabled={isSubmitting}
                 {...registerEdit("nominal", { valueAsNumber: true })}
                 className={editErrors.nominal ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -459,10 +472,10 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit_keterangan">Keterangan / Catatan</Label>
+              <Label htmlFor="edit_keterangan">Keterangan Opsional</Label>
               <Input
                 id="edit_keterangan"
-                placeholder="Membeli pakan udang"
+                placeholder="Catatan tambahan"
                 disabled={isSubmitting}
                 {...registerEdit("keterangan")}
                 className={editErrors.keterangan ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -472,7 +485,7 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
               )}
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4 sm:justify-end">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2 sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -512,8 +525,8 @@ export default function CycleOperasional({ siklusId, isCycleActive }: CycleOpera
           setSelectedLog(null);
         }}
         onConfirm={onDeleteConfirm}
-        title="Hapus Catatan Biaya?"
-        description={`Apakah Anda yakin ingin menghapus catatan pengeluaran "${selectedLog?.kategori}" sebesar ${formatIDR(selectedLog?.nominal || 0)} ini? Nominal ini akan dikurangi dari total biaya operasional siklus.`}
+        title="Hapus Catatan Pengeluaran?"
+        description={`Apakah Anda yakin ingin menghapus catatan pengeluaran "${selectedLog?.kategori}" sebesar ${formatIDR(selectedLog?.nominal || 0)} ini?`}
         isLoading={isSubmitting}
       />
     </div>
