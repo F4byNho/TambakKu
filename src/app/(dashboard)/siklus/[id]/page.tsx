@@ -614,6 +614,7 @@ export default function SiklusDetailPage() {
                       isCycleActive={cycle.status === "aktif" && selectedKomoditas.status === "aktif"} 
                       komoditasId={selectedKomoditas.komoditas_id}
                       jenisKomoditas={selectedKomoditas.jenis_komoditas}
+                      namaKomoditas={selectedKomoditas.nama_komoditas}
                     />
                   </TabsContent>
 

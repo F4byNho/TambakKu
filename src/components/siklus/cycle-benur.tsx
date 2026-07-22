@@ -41,9 +41,10 @@ interface CycleBenurProps {
   isCycleActive: boolean;
   komoditasId: string;
   jenisKomoditas: string;
+  namaKomoditas?: string;
 }
 
-export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenisKomoditas }: CycleBenurProps) {
+export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenisKomoditas, namaKomoditas }: CycleBenurProps) {
   const [logs, setLogs] = useState<BenurItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +57,8 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
 
   const config = getCommodityConfig(jenisKomoditas);
 
+  const defaultVarietas = namaKomoditas || (jenisKomoditas === "udang" ? "Vaname" : jenisKomoditas === "rumput_laut" ? "Gracilaria" : "Bandeng");
+
   // Forms
   const {
     register: registerAdd,
@@ -67,7 +70,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
     resolver: zodResolver(benurSchema) as any,
     defaultValues: {
       tanggal_tebar: new Date().toISOString().split("T")[0],
-      jenis_udang: jenisKomoditas === "udang" ? "Vaname" : jenisKomoditas === "rumput_laut" ? "Gracilaria" : "Bandeng Lokal",
+      jenis_udang: defaultVarietas,
       ukuran_PL: jenisKomoditas === "udang" ? "PL-10" : jenisKomoditas === "rumput_laut" ? "Longline" : "2-3 cm",
       jumlah_benur: "" as any,
       harga_per_ekor: "" as any,
@@ -96,7 +99,15 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
 
   useEffect(() => {
     fetchBenurLogs();
-  }, [siklusId, komoditasId]);
+    resetAdd({
+      tanggal_tebar: new Date().toISOString().split("T")[0],
+      jenis_udang: defaultVarietas,
+      ukuran_PL: jenisKomoditas === "udang" ? "PL-10" : jenisKomoditas === "rumput_laut" ? "Longline" : "2-3 cm",
+      jumlah_benur: "" as any,
+      harga_per_ekor: "" as any,
+      komoditas_id: komoditasId,
+    });
+  }, [siklusId, komoditasId, namaKomoditas]);
 
   const fetchBenurLogs = async () => {
     setIsLoading(true);
@@ -128,7 +139,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
       setIsAddOpen(false);
       resetAdd({
         tanggal_tebar: new Date().toISOString().split("T")[0],
-        jenis_udang: jenisKomoditas === "udang" ? "Vaname" : jenisKomoditas === "rumput_laut" ? "Gracilaria" : "Bandeng Lokal",
+        jenis_udang: defaultVarietas,
         ukuran_PL: jenisKomoditas === "udang" ? "PL-10" : jenisKomoditas === "rumput_laut" ? "Longline" : "2-3 cm",
         jumlah_benur: "" as any,
         harga_per_ekor: "" as any,
