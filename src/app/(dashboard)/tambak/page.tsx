@@ -377,14 +377,7 @@ export default function TambakPage() {
                 ? "Tidak ada hasil tambak yang cocok dengan kriteria pencarian atau filter Anda."
                 : "Anda belum mencatat data tambak budidaya. Silakan tambahkan tambak pertama Anda untuk memulai pencatatan siklus."}
             </p>
-            {!(searchQuery || sizeFilter !== "all") && (
-              <Button 
-                onClick={() => setIsAddOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm"
-              >
-                <Plus className="mr-2 h-4 w-4" /> Tambah Tambak Pertama
-              </Button>
-            )}
+
           </div>
         )}
       </Card>
