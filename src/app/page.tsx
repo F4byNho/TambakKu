@@ -106,7 +106,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-      </main>
 
         {/* Features Section */}
         <section className="py-12 bg-slate-50">

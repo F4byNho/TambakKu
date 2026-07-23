@@ -33,6 +33,7 @@ interface TambakItem {
   lokasi: string;
   luas_tambak: number;
   keterangan: string;
+  siklus?: Array<{ status: string }>;
 }
 
 export default function TambakPage() {
