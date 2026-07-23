@@ -46,21 +46,15 @@ export default function Sidebar({ isOpen, onClose, user }: SidebarProps) {
     },
     { 
       name: "Siklus Budidaya", 
-      desc: "Pantau Udang & Panen", 
+      desc: "Pantau Budidaya & Panen", 
       href: "/siklus", 
       icon: Activity 
     },
     { 
-      name: "Pembukuan", 
-      desc: "Catat Uang Masuk & Keluar", 
+      name: "Pembukuan & HPP", 
+      desc: "Keuangan & Analisis Harga", 
       href: "/pembukuan", 
       icon: Calculator 
-    },
-    { 
-      name: "HPP & Harga Jual", 
-      desc: "Analisis Biaya & Laba", 
-      href: "/hpp", 
-      icon: BarChart3 
     },
     { 
       name: "Laporan", 

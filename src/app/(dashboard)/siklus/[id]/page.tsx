@@ -34,7 +34,7 @@ import CycleBenur from "@/components/siklus/cycle-benur";
 import CycleOperasional from "@/components/siklus/cycle-operasional";
 import CycleSampling from "@/components/siklus/cycle-sampling";
 import CyclePanen from "@/components/siklus/cycle-panen";
-import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
+import { formatIDR, formatNumber, formatDate, getTodayDateString } from "@/lib/utils";
 import { getCommodityConfig, COMMODITY_TYPES } from "@/lib/commodity-config";
 
 interface SiklusItem {
@@ -82,7 +82,7 @@ export default function SiklusDetailPage() {
   // Form state komoditas baru
   const [newKomoditasName, setNewKomoditasName] = useState("");
   const [newKomoditasType, setNewKomoditasType] = useState("udang");
-  const [newKomoditasStartDate, setNewKomoditasStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newKomoditasStartDate, setNewKomoditasStartDate] = useState(getTodayDateString());
 
   useEffect(() => {
     fetchCycleData();
@@ -351,84 +351,101 @@ export default function SiklusDetailPage() {
                       Siklus ini belum memiliki komoditas yang didaftarkan. Tambahkan komoditas pertama Anda (seperti Udang, Ikan, Rumput Laut, Kepiting, dll.) untuk mulai mencatat budidaya.
                     </p>
                   </div>
-                  <Button 
-                    onClick={() => setIsAddKomoditasOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl text-xs mt-2"
-                  >
-                    <Plus className="mr-1.5 h-4 w-4" /> Tambah Komoditas Pertama
-                  </Button>
                 </div>
               </Card>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {commodities.map((k) => {
-                  // Cari modal dan pendapatan khusus komoditas ini
-                  const kBenurCost = benurLogs.filter(b => b.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
-                  const kOpsCost = operasionalLogs.filter(o => o.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
-                  const kModal = kBenurCost + kOpsCost;
-                  const kRevenue = panenLogs.filter(p => p.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
-                  const kLaba = kRevenue - kModal;
+                {(() => {
+                  const generalOpsCost = operasionalLogs.filter(o => !o.komoditas_id || o.komoditas_id === "").reduce((sum, item) => sum + Number(item.nominal || 0), 0);
+                  const activeCount = commodities.length || 1;
+                  const sharedOpsCost = generalOpsCost / activeCount;
 
-                  return (
-                    <Card key={k.komoditas_id} className="border-slate-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden">
-                      <CardHeader className="pb-3 border-b border-slate-50/50 bg-slate-50/30 group-hover:bg-blue-50/10 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                            k.jenis_komoditas === "udang" 
-                              ? "bg-amber-100 text-amber-800" 
-                              : k.jenis_komoditas === "rumput_laut" 
-                              ? "bg-emerald-100 text-emerald-800" 
-                              : k.jenis_komoditas === "ikan" || k.jenis_komoditas === "bandeng"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}>
-                            {k.jenis_komoditas === "rumput_laut" ? "Rumput Laut" : k.jenis_komoditas}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setKomoditasToDelete(k);
-                              setIsDeleteKomoditasOpen(true);
-                            }}
-                            className="h-7 w-7 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                  return commodities.map((k) => {
+                    const kBenurCost = benurLogs.filter(b => b.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
+                    const kOpsDirectCost = operasionalLogs.filter(o => o.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
+                    const kOpsCost = kOpsDirectCost + sharedOpsCost;
+                    const kModal = kBenurCost + kOpsCost;
+                    const kRevenue = panenLogs.filter(p => p.komoditas_id === k.komoditas_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
+                    const kLaba = kRevenue - kModal;
+
+                    return (
+                      <Card key={k.komoditas_id} className="border-slate-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-md flex flex-col justify-between group overflow-hidden">
+                        <CardHeader className="pb-3 border-b border-slate-50/50 bg-slate-50/30 group-hover:bg-blue-50/10 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                              k.jenis_komoditas === "udang" 
+                                ? "bg-amber-100 text-amber-800" 
+                                : k.jenis_komoditas === "rumput_laut" 
+                                ? "bg-emerald-100 text-emerald-800" 
+                                : k.jenis_komoditas === "ikan" || k.jenis_komoditas === "bandeng"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-purple-100 text-purple-800"
+                            }`}>
+                              {k.jenis_komoditas === "rumput_laut" ? "Rumput Laut" : k.jenis_komoditas}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setKomoditasToDelete(k);
+                                setIsDeleteKomoditasOpen(true);
+                              }}
+                              className="h-7 w-7 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                          <CardTitle className="text-base font-bold text-slate-900 mt-2">{k.nama_komoditas}</CardTitle>
+                          <CardDescription className="text-[10px] text-slate-400">Dimulai sejak: {formatDate(k.tanggal_mulai)}</CardDescription>
+                        </CardHeader>
+                      
+                      <CardContent className="py-4 space-y-3 text-xs flex-grow">
+                        <div className="flex justify-between items-center text-slate-500 border-b border-slate-50 pb-2">
+                          <div>
+                            <span>Modal Total:</span>
+                            {sharedOpsCost > 0 && (
+                              <p className="text-[9px] text-slate-400">*(Termasuk proporsi biaya tambak)</p>
+                            )}
+                          </div>
+                          <span className="font-bold text-slate-800">{formatIDR(kModal)}</span>
                         </div>
-                        <CardTitle className="text-base font-bold text-slate-900 mt-2">{k.nama_komoditas}</CardTitle>
-                        <CardDescription className="text-[10px] text-slate-400">Dimulai sejak: {formatDate(k.tanggal_mulai)}</CardDescription>
-                      </CardHeader>
-                    
-                    <CardContent className="py-4 space-y-3 text-xs flex-grow">
-                      <div className="flex justify-between items-center text-slate-500 border-b border-slate-50 pb-2">
-                        <span>Modal Awal:</span>
-                        <span className="font-bold text-slate-800">{formatIDR(kModal)}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-slate-500 border-b border-slate-50 pb-2">
-                        <span>Pendapatan:</span>
-                        <span className="font-bold text-slate-800">{formatIDR(kRevenue)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500">Laba Bersih:</span>
-                        <span className={`font-black ${kLaba >= 0 ? "text-green-600" : "text-red-600"}`}>{formatIDR(kLaba)}</span>
-                      </div>
-                    </CardContent>
+                        <div className="flex justify-between items-center text-slate-500 border-b border-slate-50 pb-2">
+                          <span>Pendapatan:</span>
+                          <span className="font-bold text-slate-800">{formatIDR(kRevenue)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500">Laba Bersih:</span>
+                          <span className={`font-black ${kLaba >= 0 ? "text-green-600" : "text-red-600"}`}>{formatIDR(kLaba)}</span>
+                        </div>
+                      </CardContent>
 
-                    <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex gap-2">
-                      <Button
-                        onClick={() => setSelectedKomoditas(k)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs h-9 shadow-sm"
-                      >
-                        Masuk Dashboard
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
+                      <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex gap-2">
+                        <Button
+                          onClick={() => setSelectedKomoditas(k)}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs h-9 shadow-sm"
+                        >
+                          Masuk Dashboard
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                });
+                })()}
+              </div>
             )}
+          </div>
+
+          {/* SECTION BIAYA UMUM TAMBAK (Persiapan Kolam, Saponin, Keduk Teplok, dll) */}
+          <div className="space-y-4 pt-2">
+            <Card className="border-slate-100 shadow-sm p-4 sm:p-6">
+              <CycleOperasional 
+                siklusId={cycle.siklus_id} 
+                isCycleActive={cycle.status === "aktif"} 
+                komoditasId="" 
+                onDataChange={fetchCycleData}
+              />
+            </Card>
           </div>
 
           {/* Rincian Analisis Biaya Tambak (Gabungan) */}

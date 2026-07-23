@@ -113,7 +113,7 @@ export default function DashboardPage() {
               Ringkasan Budidaya Tambak
             </h2>
             <p className="text-xs md:text-sm text-slate-300 mt-1 font-normal">
-              Pantau statistik kolam, modal pengeluaran, perkembangan berat udang, dan hasil panen Anda.
+              Pantau statistik kolam, modal pengeluaran, perkembangan berat komoditas (kultivan), dan hasil panen Anda.
             </p>
           </div>
           <div className="flex shrink-0 w-full sm:w-auto">
@@ -214,7 +214,7 @@ export default function DashboardPage() {
         <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Rata-rata Berat Udang (ABW)
+              Rata-rata Berat (ABW)
             </span>
             <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
               <Heart className="h-4 w-4" />
@@ -222,7 +222,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-black text-slate-900">{formatNumber(metrics.lastAbw)} <span className="text-xs font-normal text-slate-500">gram</span></div>
-            <p className="text-xs text-slate-400 mt-1">Berat rata-rata 1 ekor udang</p>
+            <p className="text-xs text-slate-400 mt-1">Berat rata-rata per sampel/ekor</p>
           </CardContent>
         </Card>
 
@@ -230,15 +230,15 @@ export default function DashboardPage() {
         <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Isi Udang per KG (Size)
+              Isi per KG (Size)
             </span>
             <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
               <Scale className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{metrics.lastSize > 0 ? Math.round(metrics.lastSize) : 0} <span className="text-xs font-normal text-slate-500">ekor/kg</span></div>
-            <p className="text-xs text-slate-400 mt-1">Estimasi isi ekor per 1 kg</p>
+            <div className="text-2xl font-black text-slate-900">{metrics.lastSize > 0 ? Math.round(metrics.lastSize) : 0} <span className="text-xs font-normal text-slate-500">ekor / unit / kg</span></div>
+            <p className="text-xs text-slate-400 mt-1">Estimasi isi ekor/unit per 1 kg</p>
           </CardContent>
         </Card>
 
@@ -254,7 +254,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-black text-slate-900">{formatNumber(metrics.totalHarvestWeight)} <span className="text-xs font-normal text-slate-500">KG</span></div>
-            <p className="text-xs text-slate-400 mt-1">Total berat udang dipanen</p>
+            <p className="text-xs text-slate-400 mt-1">Total berat komoditas dipanen</p>
           </CardContent>
         </Card>
       </div>

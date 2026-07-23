@@ -319,17 +319,9 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
               <TrendingUp className="h-6 w-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Panen</h4>
-            <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
+            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
               Pencatatan hasil panen {config.name.toLowerCase()} belum dilakukan. Silakan catat panen yang telah dicapai.
             </p>
-            {isCycleActive && (
-              <Button
-                onClick={() => setIsAddOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm text-xs h-9"
-              >
-                <Plus className="mr-2 h-3.5 w-3.5" /> Catat Hasil Panen
-              </Button>
-            )}
           </div>
         )}
       </Card>

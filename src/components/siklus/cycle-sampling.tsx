@@ -423,17 +423,9 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
               <Scale className="h-6 w-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Pertumbuhan</h4>
-            <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
+            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
               Silakan lakukan pengukuran pertumbuhan {config.name.toLowerCase()} secara berkala untuk mencatat perkembangannya.
             </p>
-            {isCycleActive && (
-              <Button
-                onClick={() => setIsAddOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm text-xs h-9"
-              >
-                <Plus className="mr-2 h-3.5 w-3.5" /> Catat Pertumbuhan
-              </Button>
-            )}
           </div>
         )}
       </Card>

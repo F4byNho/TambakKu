@@ -83,7 +83,7 @@ export default function SiklusPage() {
     defaultValues: {
       tambak_id: "",
       nomor_siklus: "" as any,
-      tanggal_mulai: new Date().toISOString().split("T")[0],
+      tanggal_mulai: "",
     },
   });
 
@@ -95,7 +95,7 @@ export default function SiklusPage() {
   } = useForm<EndSiklusInput>({
     resolver: zodResolver(endSiklusSchema) as any,
     defaultValues: {
-      tanggal_selesai: new Date().toISOString().split("T")[0],
+      tanggal_selesai: "",
       status: "selesai",
     },
   });
@@ -476,14 +476,7 @@ export default function SiklusPage() {
                 ? "Tidak ada hasil siklus yang cocok dengan filter atau pencarian Anda."
                 : "Anda belum mencatat siklus budidaya apapun. Mulai siklus budidaya pertama kolam Anda untuk mencatat perkembangan benur, sampling harian, dan hasil panen."}
             </p>
-            {!(searchQuery || selectedTambakId !== "all" || statusFilter !== "all") && tambaks.length > 0 && (
-              <Button 
-                onClick={() => setIsAddOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm"
-              >
-                <Plus className="mr-2 h-4 w-4" /> Mulai Siklus Pertama
-              </Button>
-            )}
+
           </div>
         )}
       </Card>

@@ -36,13 +36,13 @@ export default function Home() {
         <section className="relative overflow-hidden pt-12 pb-16 bg-white border-b border-slate-100">
           <div className="container mx-auto px-4 md:px-8 text-center max-w-3xl">
             <span className="inline-flex items-center rounded-full bg-slate-100 px-3.5 py-1 text-xs font-semibold text-slate-700 mb-6 border border-slate-200">
-              Aplikasi Pencatatan Budidaya Tambak Udang
+              Aplikasi Pencatatan Budidaya Tambak & Polikultur
             </span>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 mb-4 leading-tight">
-              Pencatatan Budidaya Udang Sederhana & Terstruktur
+              Pencatatan Budidaya Tambak Sederhana & Terstruktur
             </h1>
             <p className="text-base md:text-lg text-slate-600 mb-8 max-w-xl mx-auto leading-relaxed font-normal">
-              Solusi digital sederhana untuk petambak dalam mencatat kolam, operasional harian, pertumbuhan udang, dan perhitungan modal panen.
+              Solusi digital sederhana untuk petambak dalam mencatat kolam, operasional harian, perkembangan komoditas (Udang, Ikan, Rumput Laut), dan perhitungan modal panen.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
@@ -89,7 +89,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-base font-bold text-slate-900 mb-1">Catat Penebaran & Biaya</h3>
                 <p className="text-slate-500 text-xs leading-relaxed">
-                  Isi tanggal sebar benur, biaya pakan harian, obat, dan penimbangan berat udang.
+                  Isi tanggal sebar bibit, biaya pakan harian, obat, dan penimbangan berat komoditas.
                 </p>
               </div>
 
@@ -132,9 +132,9 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
                   <BarChart3 className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Pantau Pertumbuhan Udang</h3>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Pantau Pertumbuhan Komoditas</h3>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  Pantau rata-rata berat udang (ABW) dan perkiraan jumlah isi udang per kg (Size) secara teratur.
+                  Pantau rata-rata berat kultivan (ABW) dan perkiraan jumlah isi per kg (Size) secara teratur.
                 </p>
               </div>
 

@@ -43,11 +43,20 @@ interface CycleOperasionalProps {
   onDataChange?: () => void;
 }
 
+const TK_KEYWORDS = ["tenaga kerja", "upah", "gaji", "honor", "honorarium", " tk", "pekerja", "buruh"];
+function isTKCategory(kategori: string): boolean {
+  const k = (kategori || "").toLowerCase();
+  return TK_KEYWORDS.some((kw) => k.includes(kw));
+}
+
 export default function CycleOperasional({ siklusId, isCycleActive, komoditasId, jenisKomoditas, onDataChange }: CycleOperasionalProps) {
   const [logs, setLogs] = useState<OperasionalItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedLog, setSelectedLog] = useState<OperasionalItem | null>(null);
+
+  const [jenisBiayaAdd, setJenisBiayaAdd] = useState<"operasional" | "tenaga_kerja">("operasional");
+  const [jenisBiayaEdit, setJenisBiayaEdit] = useState<"operasional" | "tenaga_kerja">("operasional");
 
   // Dialog controllers
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -107,10 +116,15 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
   const onAddSubmit = async (data: OperasionalInput) => {
     setIsSubmitting(true);
     try {
+      let finalKategori = data.kategori.trim();
+      if (jenisBiayaAdd === "tenaga_kerja" && !isTKCategory(finalKategori)) {
+        finalKategori = `Tenaga Kerja - ${finalKategori}`;
+      }
+
       const res = await fetch("/api/operasional", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siklusId, ...data, komoditas_id: komoditasId || "" }),
+        body: JSON.stringify({ siklusId, ...data, kategori: finalKategori, komoditas_id: komoditasId || "" }),
       });
 
       const result = await res.json();
@@ -125,6 +139,7 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
         keterangan: "",
         komoditas_id: komoditasId || "",
       });
+      setJenisBiayaAdd("operasional");
       fetchOperasionalLogs();
       onDataChange?.();
     } catch (err: any) {
@@ -138,10 +153,15 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
     if (!selectedLog) return;
     setIsSubmitting(true);
     try {
+      let finalKategori = data.kategori.trim();
+      if (jenisBiayaEdit === "tenaga_kerja" && !isTKCategory(finalKategori)) {
+        finalKategori = `Tenaga Kerja - ${finalKategori}`;
+      }
+
       const res = await fetch(`/api/operasional/${selectedLog.operasional_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, komoditas_id: komoditasId || "" }),
+        body: JSON.stringify({ ...data, kategori: finalKategori, komoditas_id: komoditasId || "" }),
       });
 
       const result = await res.json();
@@ -184,6 +204,8 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
 
   const openEditDialog = (log: OperasionalItem) => {
     setSelectedLog(log);
+    const isTK = isTKCategory(log.kategori);
+    setJenisBiayaEdit(isTK ? "tenaga_kerja" : "operasional");
     resetEdit({
       tanggal: log.tanggal,
       kategori: log.kategori as any,
@@ -309,17 +331,9 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
               <Calculator className="h-6 w-6" />
             </div>
             <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Biaya Operasional</h4>
-            <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
+            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
               Pengeluaran operasional belum dicatat untuk {jenisKomoditas ? getCommodityConfig(jenisKomoditas).name.toLowerCase() : "siklus kolam ini"}.
             </p>
-            {isCycleActive && (
-              <Button
-                onClick={() => setIsAddOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm text-xs h-9"
-              >
-                <Plus className="mr-2 h-3.5 w-3.5" /> Tambah Pengeluaran
-              </Button>
-            )}
           </div>
         )}
       </Card>
@@ -351,10 +365,24 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="kategori">Nama / Kategori Pengeluaran</Label>
+              <Label htmlFor="jenis_biaya">Kelompok / Jenis Pengeluaran</Label>
+              <select
+                id="jenis_biaya"
+                value={jenisBiayaAdd}
+                onChange={(e) => setJenisBiayaAdd(e.target.value as "operasional" | "tenaga_kerja")}
+                disabled={isSubmitting}
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50"
+              >
+                <option value="operasional">Pengeluaran Operasional</option>
+                <option value="tenaga_kerja">Pengeluaran Tenaga Kerja</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="kategori">Nama / Detail Pengeluaran</Label>
               <Input
                 id="kategori"
-                placeholder="Misal: Pakan, Solar, Obat-obatan, Gaji Pekerja"
+                placeholder={jenisBiayaAdd === "tenaga_kerja" ? "Misal: Upah Panen Udang, Gaji Pekerja" : "Misal: Keduk Teplok, Saponin, Pakan"}
                 disabled={isSubmitting}
                 {...registerAdd("kategori")}
                 className={addErrors.kategori ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -383,7 +411,7 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
               <Label htmlFor="keterangan">Keterangan Opsional</Label>
               <Input
                 id="keterangan"
-                placeholder="Catatan tambahan (misal: Beli 2 karung pakan merk X)"
+                placeholder="Catatan tambahan (misal: Beli 2 karung pakan / 3 pekerja harian)"
                 disabled={isSubmitting}
                 {...registerAdd("keterangan")}
                 className={addErrors.keterangan ? "border-red-500 focus-visible:ring-red-500" : ""}
@@ -447,10 +475,24 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit_kategori">Nama / Kategori Pengeluaran</Label>
+              <Label htmlFor="edit_jenis_biaya">Kelompok / Jenis Pengeluaran</Label>
+              <select
+                id="edit_jenis_biaya"
+                value={jenisBiayaEdit}
+                onChange={(e) => setJenisBiayaEdit(e.target.value as "operasional" | "tenaga_kerja")}
+                disabled={isSubmitting}
+                className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50"
+              >
+                <option value="operasional">Pengeluaran Operasional</option>
+                <option value="tenaga_kerja">Pengeluaran Tenaga Kerja</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit_kategori">Nama / Detail Pengeluaran</Label>
               <Input
                 id="edit_kategori"
-                placeholder="Misal: Pakan, Solar, Obat-obatan"
+                placeholder={jenisBiayaEdit === "tenaga_kerja" ? "Misal: Upah Panen Udang, Gaji Pekerja" : "Misal: Keduk Teplok, Saponin, Pakan"}
                 disabled={isSubmitting}
                 {...registerEdit("kategori")}
                 className={editErrors.kategori ? "border-red-500 focus-visible:ring-red-500" : ""}

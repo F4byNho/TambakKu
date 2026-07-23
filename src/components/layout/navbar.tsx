@@ -24,15 +24,15 @@ export default function Navbar({ onOpenSidebar, user }: NavbarProps) {
     };
     if (pathname.startsWith("/tambak")) return {
       title: "Data Kolam Tambak",
-      subtitle: "Daftar lokasi dan luas kolam tambak udang Anda"
+      subtitle: "Daftar lokasi dan luas kolam tambak Anda"
     };
     if (pathname.startsWith("/siklus")) return {
-      title: "Siklus Budidaya Udang",
-      subtitle: "Pencatatan benur, biaya harian, sampling berat, dan panen"
+      title: "Siklus Budidaya Tambak",
+      subtitle: "Pencatatan bibit/benur, biaya harian, sampling berat, dan panen"
     };
     if (pathname.startsWith("/pembukuan")) return {
-      title: "Pembukuan Keuangan",
-      subtitle: "Pencatatan uang masuk dari panen dan uang keluar operasional"
+      title: "Pembukuan & HPP",
+      subtitle: "Rekapitulasi arus kas, modal panen, serta analisis HPP per kg"
     };
     if (pathname.startsWith("/laporan")) return {
       title: "Ekspor & Cetak Laporan",
@@ -40,7 +40,7 @@ export default function Navbar({ onOpenSidebar, user }: NavbarProps) {
     };
     return {
       title: "TambakKu",
-      subtitle: "Aplikasi Pencatatan Tambak Udang"
+      subtitle: "Aplikasi Pencatatan Budidaya Tambak & Polikultur"
     };
   };
 

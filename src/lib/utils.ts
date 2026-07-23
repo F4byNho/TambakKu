@@ -28,18 +28,22 @@ export function formatDate(dateStr: string | null | undefined): string {
     const str = String(dateStr).trim();
     if (!str) return "-";
 
-    // Matching YYYY-MM-DD or YYYY/MM/DD or YYYY-MM-DDTHH:mm:ss...
-    const matchesISO = str.match(/^(\d{4})[-/\.](0?[1-9]|1[0-2])[-/\.](0?[1-9]|[12]\d|3[01])/);
-    if (matchesISO) {
-      const [, year, month, day] = matchesISO;
-      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
-    }
+    // Jika string memiliki 'T', itu adalah timestamp ISO UTC (misal 2026-07-22T17:00:00.000Z).
+    // Harus diparse dengan new Date() agar terkonversi ke tanggal lokal user (GMT+7) dengan benar.
+    if (!str.includes("T")) {
+      // Matching YYYY-MM-DD atau YYYY/MM/DD (hanya string tanggal tanpa jam)
+      const matchesISO = str.match(/^(\d{4})[-/\.](0?[1-9]|1[0-2])[-/\.](0?[1-9]|[12]\d|3[01])$/);
+      if (matchesISO) {
+        const [, year, month, day] = matchesISO;
+        return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+      }
 
-    // Matching DD/MM/YYYY or DD-MM-YYYY
-    const matchesDMY = str.match(/^(0?[1-9]|[12]\d|3[01])[-/\.](0?[1-9]|1[0-2])[-/\.](\d{4})/);
-    if (matchesDMY) {
-      const [, day, month, year] = matchesDMY;
-      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+      // Matching DD/MM/YYYY atau DD-MM-YYYY
+      const matchesDMY = str.match(/^(0?[1-9]|[12]\d|3[01])[-/\.](0?[1-9]|1[0-2])[-/\.](\d{4})$/);
+      if (matchesDMY) {
+        const [, day, month, year] = matchesDMY;
+        return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+      }
     }
 
     const d = new Date(str);
@@ -51,5 +55,13 @@ export function formatDate(dateStr: string | null | undefined): string {
   } catch (e) {
     return String(dateStr);
   }
+}
+
+export function getTodayDateString(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 

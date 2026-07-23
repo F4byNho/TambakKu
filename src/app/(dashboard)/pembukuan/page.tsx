@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { 
   Calculator, 
   Loader2, 
@@ -9,13 +10,15 @@ import {
   Eye, 
   TrendingUp, 
   TrendingDown, 
-  Coins
+  Coins,
+  BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { formatIDR, formatNumber } from "@/lib/utils";
+import HPPSection from "@/components/pembukuan/hpp-section";
 
 interface CycleSummary {
   siklus_id: string;
@@ -28,6 +31,10 @@ interface CycleSummary {
 }
 
 export default function PembukuanPage() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "hpp" ? "hpp" : "pembukuan";
+
+  const [activeTab, setActiveTab] = useState<"pembukuan" | "hpp">(initialTab);
   const [cycles, setCycles] = useState<CycleSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -56,20 +63,51 @@ export default function PembukuanPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
-      {/* Header Banner */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-5 text-slate-900 shadow-2xs">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-            <Coins className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Pembukuan Keuangan Tambak</h3>
-            <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
-              Rekapitulasi gabungan modal pengeluaran vs total uang masuk dari hasil penjualan panen.
-            </p>
-          </div>
-        </div>
+      {/* Top Segmented Tab Control */}
+      <div className="bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-2xs flex gap-2">
+        <button
+          onClick={() => setActiveTab("pembukuan")}
+          className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all min-h-[44px] ${
+            activeTab === "pembukuan"
+              ? "bg-white text-blue-700 shadow-xs border border-blue-100"
+              : "text-slate-600 hover:bg-slate-200/60"
+          }`}
+        >
+          <Coins className="h-4 w-4" />
+          Pembukuan &amp; Arus Kas
+        </button>
+
+        <button
+          onClick={() => setActiveTab("hpp")}
+          className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all min-h-[44px] ${
+            activeTab === "hpp"
+              ? "bg-white text-blue-700 shadow-xs border border-blue-100"
+              : "text-slate-600 hover:bg-slate-200/60"
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          HPP &amp; Harga Jual
+        </button>
       </div>
+
+      {activeTab === "hpp" ? (
+        <HPPSection />
+      ) : (
+        <>
+          {/* Header Banner */}
+          <div className="rounded-2xl bg-white border border-slate-200 p-5 text-slate-900 shadow-2xs">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                <Coins className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Pembukuan Keuangan Tambak</h3>
+                <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
+                  Rekapitulasi gabungan modal pengeluaran vs total uang masuk dari hasil penjualan panen.
+                </p>
+              </div>
+            </div>
+          </div>
 
       {/* KPI Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -216,6 +254,8 @@ export default function PembukuanPage() {
           </div>
         )}
       </Card>
+        </>
+      )}
     </div>
   );
 }
