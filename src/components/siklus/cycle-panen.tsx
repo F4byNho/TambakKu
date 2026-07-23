@@ -39,9 +39,10 @@ interface CyclePanenProps {
   isCycleActive: boolean;
   komoditasId: string;
   jenisKomoditas: string;
+  onDataChange?: () => void;
 }
 
-export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenisKomoditas }: CyclePanenProps) {
+export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenisKomoditas, onDataChange }: CyclePanenProps) {
   const [logs, setLogs] = useState<PanenItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,6 +134,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
         komoditas_id: komoditasId,
       });
       fetchPanenLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
     } finally {
@@ -157,6 +159,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
       setIsEditOpen(false);
       setSelectedLog(null);
       fetchPanenLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal memperbarui data");
     } finally {
@@ -179,6 +182,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
       setIsDeleteOpen(false);
       setSelectedLog(null);
       fetchPanenLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus data");
     } finally {

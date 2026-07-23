@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import HPPKomoditasCard, { HPPKomoditasData } from "@/components/hpp/hpp-komoditas-card";
 import HPPTambakSummary from "@/components/hpp/hpp-tambak-summary";
 
@@ -138,16 +139,16 @@ export default function HPPPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-3xl space-y-5 pb-24 md:pb-6">
+    <div className="mx-auto max-w-5xl space-y-6 pb-24 md:pb-6 animate-in fade-in duration-300">
       {/* Page Header */}
-      <div className="rounded-2xl bg-slate-900 p-5 text-white">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600">
-            <Calculator className="h-5 w-5 text-white" />
+      <div className="rounded-2xl bg-white border border-slate-200 p-5 text-slate-900 shadow-2xs">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+            <Calculator className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-lg font-extrabold text-white">HPP &amp; Harga Jual</h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h3 className="text-base font-bold text-slate-900">HPP &amp; Harga Jual</h3>
+            <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
               Hitung biaya produksi, HPP, dan analisis laba per komoditas
             </p>
           </div>
@@ -155,80 +156,66 @@ export default function HPPPage() {
       </div>
 
       {/* Selector: Tambak & Siklus */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-          Pilih Tambak &amp; Siklus
-        </p>
+      <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            Pilih Tambak &amp; Siklus
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Tambak */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">Kolam / Tambak</label>
-            <Select
+            <label htmlFor="tambak" className="text-xs font-semibold text-slate-700">Kolam / Tambak</label>
+            <select
+              id="tambak"
               value={selectedTambakId}
-              onValueChange={(v) => setSelectedTambakId(v ?? "")}
+              onChange={(e) => setSelectedTambakId(e.target.value)}
               disabled={isLoadingTambak}
+              className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50 disabled:text-slate-400"
             >
-              <SelectTrigger className="h-11 text-sm border-slate-200 bg-slate-50">
-                <SelectValue
-                  placeholder={
-                    isLoadingTambak ? "Memuat..." : "Pilih tambak..."
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {tambaks.map((t) => (
-                  <SelectItem key={t.tambak_id} value={t.tambak_id}>
-                    {t.nama_tambak}
-                    {t.lokasi ? ` — ${t.lokasi}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="" disabled>
+                {isLoadingTambak ? "Memuat..." : "Pilih tambak..."}
+              </option>
+              {tambaks.map((t) => (
+                <option key={t.tambak_id} value={t.tambak_id}>
+                  {t.nama_tambak}
+                  {t.lokasi ? ` — ${t.lokasi}` : ""}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Siklus */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-700">Siklus Budidaya</label>
-            <Select
+            <label htmlFor="siklus" className="text-xs font-semibold text-slate-700">Siklus Budidaya</label>
+            <select
+              id="siklus"
               value={selectedSiklusId}
-              onValueChange={(v) => setSelectedSiklusId(v ?? "")}
+              onChange={(e) => setSelectedSiklusId(e.target.value)}
               disabled={!selectedTambakId || isLoadingSiklus || filteredSiklus.length === 0}
+              className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50 disabled:text-slate-400"
             >
-              <SelectTrigger className="h-11 text-sm border-slate-200 bg-slate-50">
-                <SelectValue
-                  placeholder={
-                    isLoadingSiklus
-                      ? "Memuat..."
-                      : !selectedTambakId
-                      ? "Pilih tambak dulu"
-                      : filteredSiklus.length === 0
-                      ? "Belum ada siklus"
-                      : "Pilih siklus..."
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredSiklus.map((s) => (
-                  <SelectItem key={s.siklus_id} value={s.siklus_id}>
-                    Siklus #{s.nomor_siklus}
-                    {" — "}
-                    <span
-                      className={`ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
-                        s.status === "aktif"
-                          ? "border-green-300 text-green-700 bg-green-50"
-                          : "border-slate-300 text-slate-500 bg-slate-50"
-                      }`}
-                    >
-                      {s.status}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="" disabled>
+                {isLoadingSiklus
+                  ? "Memuat..."
+                  : !selectedTambakId
+                  ? "Pilih tambak dulu"
+                  : filteredSiklus.length === 0
+                  ? "Belum ada siklus"
+                  : "Pilih siklus..."}
+              </option>
+              {filteredSiklus.map((s) => (
+                <option key={s.siklus_id} value={s.siklus_id}>
+                  Siklus #{s.nomor_siklus} — {s.status === "aktif" ? "Aktif" : "Selesai"}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Loading State */}
       {isLoadingHPP && (

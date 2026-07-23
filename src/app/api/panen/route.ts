@@ -27,8 +27,12 @@ export async function GET(req: Request) {
     if (res.error) {
       return NextResponse.json({ error: res.error }, { status: 400 });
     }
+    const processedData = (res.data || []).map((item) => ({
+      ...item,
+      tanggal: item.tanggal_panen || item.tanggal || "",
+    }));
     
-    return NextResponse.json({ data: res.data || [] });
+    return NextResponse.json({ data: processedData });
   } catch (error: any) {
     console.error("GET Panen API Error:", error);
     return NextResponse.json(
@@ -66,6 +70,7 @@ export async function POST(req: Request) {
       panen_id: panenId,
       siklus_id: siklusId,
       user_id: session.userId,
+      tanggal_panen: result.data.tanggal,
       ...result.data,
     };
     

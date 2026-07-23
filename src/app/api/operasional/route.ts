@@ -27,8 +27,14 @@ export async function GET(req: Request) {
     if (res.error) {
       return NextResponse.json({ error: res.error }, { status: 400 });
     }
+    const processedData = (res.data || []).map((item) => ({
+      ...item,
+      tanggal: item.tanggal_operasional || item.tanggal || "",
+      nominal: item.deskripsi || item.nominal || 0, // In backend deskripsi stores the nominal due to column mismatch
+      keterangan: item.biaya || item.keterangan || "", // In backend biaya stores the keterangan due to column mismatch
+    }));
     
-    return NextResponse.json({ data: res.data || [] });
+    return NextResponse.json({ data: processedData });
   } catch (error: any) {
     console.error("GET Operasional API Error:", error);
     return NextResponse.json(
@@ -66,6 +72,10 @@ export async function POST(req: Request) {
       operasional_id: operasionalId,
       siklus_id: siklusId,
       user_id: session.userId,
+      tanggal: result.data.tanggal, // Used by createOperasional in GAS
+      tanggal_operasional: result.data.tanggal, // Needed for updateRowData
+      deskripsi: result.data.nominal, // Hack: GAS expects deskripsi to be nominal based on column order
+      biaya: result.data.keterangan, // Hack: GAS expects biaya to be keterangan based on column order
       ...result.data,
     };
     

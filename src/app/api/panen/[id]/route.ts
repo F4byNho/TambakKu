@@ -26,6 +26,7 @@ export async function PUT(
     
     const payload = {
       panen_id: id,
+      tanggal_panen: result.data.tanggal,
       ...result.data,
     };
     

@@ -33,14 +33,18 @@ export async function GET(req: Request) {
       const dbAbw = Number(item.abw || 0);
       const dbSize = Number(item.size || 0);
       
-      const jumlahUdang = Number(item.jumlah_udang || 0);
-      const beratTotal = Number(item.berat_total || 0);
+      const jumlahUdang = Number(item.jumlah_udang_sampling || item.jumlah_udang || 0);
+      const beratTotal = Number(item.berat_total_sampling || item.berat_total || 0);
+      const tanggal = item.tanggal_sampling || item.tanggal || "";
       
       const abw = dbAbw > 0 ? dbAbw : (jumlahUdang > 0 ? (beratTotal / jumlahUdang) : 0);
       const size = dbSize > 0 ? dbSize : (abw > 0 ? (1000 / abw) : 0);
       
       return {
         ...item,
+        tanggal,
+        jumlah_udang: jumlahUdang,
+        berat_total: beratTotal,
         abw: Number(abw.toFixed(2)),
         size: Math.round(size),
       };
@@ -84,6 +88,9 @@ export async function POST(req: Request) {
       sampling_id: samplingId,
       siklus_id: siklusId,
       user_id: session.userId,
+      tanggal_sampling: result.data.tanggal,
+      jumlah_udang_sampling: result.data.jumlah_udang,
+      berat_total_sampling: result.data.berat_total,
       ...result.data,
     };
     

@@ -40,9 +40,10 @@ interface CycleOperasionalProps {
   isCycleActive: boolean;
   komoditasId?: string;
   jenisKomoditas?: string;
+  onDataChange?: () => void;
 }
 
-export default function CycleOperasional({ siklusId, isCycleActive, komoditasId, jenisKomoditas }: CycleOperasionalProps) {
+export default function CycleOperasional({ siklusId, isCycleActive, komoditasId, jenisKomoditas, onDataChange }: CycleOperasionalProps) {
   const [logs, setLogs] = useState<OperasionalItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -125,6 +126,7 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
         komoditas_id: komoditasId || "",
       });
       fetchOperasionalLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
     } finally {
@@ -149,6 +151,7 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
       setIsEditOpen(false);
       setSelectedLog(null);
       fetchOperasionalLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal memperbarui data");
     } finally {
@@ -171,6 +174,7 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
       setIsDeleteOpen(false);
       setSelectedLog(null);
       fetchOperasionalLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus data");
     } finally {

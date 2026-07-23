@@ -42,9 +42,10 @@ interface CycleBenurProps {
   komoditasId: string;
   jenisKomoditas: string;
   namaKomoditas?: string;
+  onDataChange?: () => void;
 }
 
-export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenisKomoditas, namaKomoditas }: CycleBenurProps) {
+export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenisKomoditas, namaKomoditas, onDataChange }: CycleBenurProps) {
   const [logs, setLogs] = useState<BenurItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,6 +147,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
         komoditas_id: komoditasId,
       });
       fetchBenurLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
     } finally {
@@ -170,6 +172,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
       setIsEditOpen(false);
       setSelectedLog(null);
       fetchBenurLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal memperbarui data");
     } finally {
@@ -192,6 +195,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
       setIsDeleteOpen(false);
       setSelectedLog(null);
       fetchBenurLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus data");
     } finally {

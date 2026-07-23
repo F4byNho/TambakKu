@@ -50,9 +50,10 @@ interface CycleSamplingProps {
   isCycleActive: boolean;
   komoditasId: string;
   jenisKomoditas: string;
+  onDataChange?: () => void;
 }
 
-export default function CycleSampling({ siklusId, isCycleActive, komoditasId, jenisKomoditas }: CycleSamplingProps) {
+export default function CycleSampling({ siklusId, isCycleActive, komoditasId, jenisKomoditas, onDataChange }: CycleSamplingProps) {
   const [logs, setLogs] = useState<SamplingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -167,6 +168,7 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
         komoditas_id: komoditasId,
       });
       fetchSamplingLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
     } finally {
@@ -198,6 +200,7 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
       setIsEditOpen(false);
       setSelectedLog(null);
       fetchSamplingLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal memperbarui data");
     } finally {
@@ -220,6 +223,7 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
       setIsDeleteOpen(false);
       setSelectedLog(null);
       fetchSamplingLogs();
+      onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus data");
     } finally {

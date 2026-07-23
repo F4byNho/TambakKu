@@ -26,6 +26,9 @@ export async function PUT(
     
     const payload = {
       operasional_id: id,
+      tanggal_operasional: result.data.tanggal,
+      deskripsi: result.data.nominal,
+      biaya: result.data.keterangan,
       ...result.data,
     };
     
