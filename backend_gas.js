@@ -12,7 +12,7 @@
  * 8. Klik "Terapkan" (Deploy), berikan izin akses spreadsheet, lalu salin URL Aplikasi Web yang diberikan.
  */
 
-const SECRET_API_KEY = "TambakKu_Secure_API_Key_2026"; // Silakan ganti untuk keamanan ekstra
+const SECRET_API_KEY = "TambakKuTester"; // Silakan ganti untuk keamanan ekstra
 
 // Helper untuk mengembalikan respon JSON
 function jsonResponse(data, status = 200) {
