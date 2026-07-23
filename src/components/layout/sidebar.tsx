@@ -11,7 +11,8 @@ import {
   FileText, 
   LogOut, 
   X,
-  User
+  User,
+  BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -54,6 +55,12 @@ export default function Sidebar({ isOpen, onClose, user }: SidebarProps) {
       desc: "Catat Uang Masuk & Keluar", 
       href: "/pembukuan", 
       icon: Calculator 
+    },
+    { 
+      name: "HPP & Harga Jual", 
+      desc: "Analisis Biaya & Laba", 
+      href: "/hpp", 
+      icon: BarChart3 
     },
     { 
       name: "Laporan", 

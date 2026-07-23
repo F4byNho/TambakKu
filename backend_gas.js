@@ -32,7 +32,8 @@ function initDatabase() {
     "Penebaran Benur": ["benur_id", "siklus_id", "user_id", "tanggal_tebar", "jenis_udang", "ukuran_PL", "jumlah_benur", "harga_per_ekor", "total_harga", "komoditas_id"],
     "Operasional": ["operasional_id", "siklus_id", "user_id", "tanggal", "kategori", "nominal", "keterangan", "komoditas_id"],
     "Sampling": ["sampling_id", "siklus_id", "user_id", "tanggal_sampling", "jumlah_udang_sampling", "berat_total_sampling", "abw", "size", "komoditas_id"],
-    "Panen": ["panen_id", "siklus_id", "user_id", "tanggal_panen", "berat_panen", "harga_jual", "pendapatan", "komoditas_id"]
+    "Panen": ["panen_id", "siklus_id", "user_id", "tanggal_panen", "berat_panen", "harga_jual", "pendapatan", "komoditas_id"],
+    "HPP Settings": ["hpp_setting_id", "siklus_id", "komoditas_id", "user_id", "alokasi_persen", "markup_persen", "margin_persen", "harga_jual_input", "updated_at"]
   };
 
   for (const sheetName in tables) {
@@ -171,6 +172,16 @@ function doGet(e) {
 
       case "getDashboardData":
         return getDashboardDataset(params.userId);
+
+      case "getHPPSettings":
+        const hppSettings = readSheetData("HPP Settings");
+        const filteredHpp = hppSettings.filter(h =>
+          h.siklus_id === params.siklusId && h.user_id === params.userId
+        );
+        return jsonResponse({ data: filteredHpp });
+
+      case "getHPPData":
+        return getHPPDataset(params.userId, params.siklusId);
         
       default:
         return jsonResponse({ error: "Unknown action: " + action }, 400);
@@ -391,6 +402,37 @@ function doPost(e) {
         
       case "deletePanen":
         return deleteRowData("Panen", "panen_id", data.panen_id);
+
+      case "saveHPPSettings":
+        const hppSheet = ss.getSheetByName("HPP Settings");
+        // Cari apakah setting sudah ada (upsert)
+        const existingHppSettings = readSheetData("HPP Settings");
+        const existingRow = existingHppSettings.find(
+          h => h.siklus_id === data.siklus_id && h.komoditas_id === data.komoditas_id && h.user_id === data.user_id
+        );
+        if (existingRow) {
+          // Update
+          existingRow.alokasi_persen = data.alokasi_persen;
+          existingRow.markup_persen = data.markup_persen;
+          existingRow.margin_persen = data.margin_persen;
+          existingRow.harga_jual_input = data.harga_jual_input;
+          existingRow.updated_at = new Date().toISOString();
+          return updateRowData("HPP Settings", "hpp_setting_id", existingRow.hpp_setting_id, existingRow);
+        } else {
+          // Insert
+          hppSheet.appendRow([
+            data.hpp_setting_id,
+            data.siklus_id,
+            data.komoditas_id,
+            data.user_id,
+            Number(data.alokasi_persen || 0),
+            Number(data.markup_persen || 30),
+            Number(data.margin_persen || 30),
+            Number(data.harga_jual_input || 0),
+            new Date().toISOString()
+          ]);
+          return jsonResponse({ success: true, message: "HPP Settings berhasil disimpan" });
+        }
         
       default:
         return jsonResponse({ error: "Unknown action: " + action }, 400);
@@ -523,6 +565,32 @@ function getDashboardDataset(userId) {
           komoditas: cKomoditas
         };
       })
+    }
+  });
+}
+
+// Ambil Seluruh Data HPP untuk satu Siklus
+function getHPPDataset(userId, siklusId) {
+  const tambaks = readSheetData("Tambak").filter(t => t.user_id === userId);
+  const siklus = readSheetData("Siklus").filter(s => s.user_id === userId && s.siklus_id === siklusId);
+  const komoditas = readSheetData("Komoditas").filter(k => k.user_id === userId && k.siklus_id === siklusId);
+  const benurs = readSheetData("Penebaran Benur").filter(b => b.siklus_id === siklusId);
+  const ops = readSheetData("Operasional").filter(o => o.siklus_id === siklusId);
+  const panens = readSheetData("Panen").filter(p => p.siklus_id === siklusId);
+  const hppSettings = readSheetData("HPP Settings").filter(h => h.siklus_id === siklusId && h.user_id === userId);
+
+  const theSiklus = siklus[0] || null;
+  const theTambak = theSiklus ? tambaks.find(t => t.tambak_id === theSiklus.tambak_id) || null : null;
+
+  return jsonResponse({
+    data: {
+      tambak: theTambak,
+      siklus: theSiklus,
+      komoditas,
+      benur: benurs,
+      operasional: ops,
+      panen: panens,
+      hppSettings
     }
   });
 }
