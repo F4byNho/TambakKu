@@ -103,18 +103,18 @@ export default function PWAInstaller() {
 
         {/* Action button for Android / Chrome */}
         {deferredPrompt ? (
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 w-full">
             <Button
               onClick={handleInstallClick}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-10 rounded-xl shadow-xs gap-2"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-10 rounded-xl shadow-xs gap-2"
             >
-              <Download className="h-4 w-4" />
-              Download & Install di HP
+              <Download className="h-4 w-4 shrink-0" />
+              <span className="truncate">Download & Install di HP</span>
             </Button>
             <Button
               variant="outline"
               onClick={dismissBanner}
-              className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 text-xs h-10 rounded-xl px-4"
+              className="shrink-0 bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 text-xs h-10 rounded-xl px-4"
             >
               Nanti
             </Button>
