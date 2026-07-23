@@ -89,22 +89,22 @@ function Row({
     <div
       className={`flex items-center justify-between gap-2 px-4 py-2.5 text-sm border-b border-slate-100 last:border-0 ${
         highlight
-          ? "bg-blue-50 rounded-lg"
+          ? "bg-blue-50/80 border border-blue-100 rounded-xl my-1 shadow-2xs"
           : sub
-          ? "bg-slate-50/50"
+          ? "bg-slate-50/40"
           : ""
       }`}
     >
       <span
-        className={`${bold ? "font-bold text-slate-800" : "text-slate-600"} ${
-          indent ? "pl-4" : ""
+        className={`${bold ? "font-bold text-slate-900" : "font-medium text-slate-600"} ${
+          indent ? "pl-4 text-slate-500" : ""
         } text-xs sm:text-sm`}
       >
         {label}
       </span>
       <span
         className={`font-mono shrink-0 ${
-          highlight ? "font-extrabold text-blue-700 text-base" : bold ? "font-bold text-slate-800" : "text-slate-700"
+          highlight ? "font-black text-blue-700 text-base" : bold ? "font-bold text-slate-900" : "font-semibold text-slate-700"
         } text-xs sm:text-sm`}
       >
         {value}
@@ -117,11 +117,11 @@ function Row({
 
 function SectionHeader({ num, title }: { num: string; title: string }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl mt-4 first:mt-0">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/20 text-[10px] font-extrabold">
+    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 border border-slate-200/80 text-slate-800 rounded-xl mt-5 first:mt-0 shadow-2xs">
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white text-[11px] font-extrabold">
         {num}
       </span>
-      <span className="text-xs sm:text-sm font-bold tracking-wide uppercase">
+      <span className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-900">
         {title}
       </span>
     </div>
@@ -190,31 +190,29 @@ export default function HPPKomoditasCard({ data, siklusId, onSettingsSaved }: Pr
   }, [alokasi, markup, margin, hargaJual, siklusId, data.komoditas_id, onSettingsSaved]);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden transition-all animate-in fade-in duration-200">
       {/* Card Header */}
       <button
-        className="flex w-full items-center justify-between gap-3 bg-slate-900 px-5 py-4 text-left"
+        type="button"
+        className="flex w-full items-center justify-between gap-3 border-b border-blue-100 bg-gradient-to-r from-blue-50/90 via-white to-blue-50/40 px-5 py-4 text-left transition-colors hover:bg-blue-50/60"
         onClick={() => setIsOpen((v) => !v)}
       >
         <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-700">
             HPP &amp; Harga Jual
-          </p>
-          <h3 className="text-base sm:text-lg font-extrabold text-white mt-0.5">
+          </span>
+          <h3 className="text-lg font-black text-slate-900 capitalize mt-0.5">
             {data.nama_komoditas}
           </h3>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge
-            variant="outline"
-            className="border-white/20 text-white/80 text-[10px] font-semibold hidden sm:inline-flex"
-          >
+          <span className="inline-flex items-center rounded-full bg-blue-100/80 px-2.5 py-0.5 text-[11px] font-bold text-blue-800 uppercase tracking-wider border border-blue-200/80">
             {data.jenis_komoditas || "Komoditas"}
-          </Badge>
+          </span>
           {isOpen ? (
-            <ChevronUp className="h-5 w-5 text-white/60" />
+            <ChevronUp className="h-5 w-5 text-slate-500" />
           ) : (
-            <ChevronDown className="h-5 w-5 text-white/60" />
+            <ChevronDown className="h-5 w-5 text-slate-500" />
           )}
         </div>
       </button>
@@ -415,7 +413,7 @@ export default function HPPKomoditasCard({ data, siklusId, onSettingsSaved }: Pr
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm gap-2 rounded-xl"
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm gap-2 rounded-xl shadow-2xs transition-all"
               >
                 <Save className="h-4 w-4" />
                 {isSaving ? "Menyimpan..." : "Simpan Pengaturan HPP"}

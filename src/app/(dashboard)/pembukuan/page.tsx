@@ -19,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { formatIDR, formatNumber } from "@/lib/utils";
 import HPPSection from "@/components/pembukuan/hpp-section";
+import { usePokdakan } from "@/context/pokdakan-context";
 
 interface CycleSummary {
   siklus_id: string;
@@ -32,6 +33,7 @@ interface CycleSummary {
 
 export default function PembukuanPage() {
   const searchParams = useSearchParams();
+  const { activeTambak, activeAnggota } = usePokdakan();
   const initialTab = searchParams.get("tab") === "hpp" ? "hpp" : "pembukuan";
 
   const [activeTab, setActiveTab] = useState<"pembukuan" | "hpp">(initialTab);
@@ -40,11 +42,17 @@ export default function PembukuanPage() {
 
   useEffect(() => {
     fetchLedgerData();
-  }, []);
+  }, [activeTambak, activeAnggota]);
 
   const fetchLedgerData = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch("/api/dashboard");
+      const url = activeTambak 
+        ? `/api/dashboard?tambakId=${activeTambak.tambak_id}`
+        : activeAnggota
+        ? `/api/dashboard?anggotaId=${activeAnggota.anggota_id}`
+        : `/api/dashboard`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Gagal mengambil data pembukuan");
       const json = await res.json();
       setCycles(json.cyclesSummary || []);

@@ -65,3 +65,33 @@ export function getTodayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
+export function formatDateForInput(dateStr: any): string {
+  if (!dateStr || dateStr === "undefined" || dateStr === "null") {
+    return getTodayDateString();
+  }
+  const str = String(dateStr).trim();
+  if (!str) return getTodayDateString();
+
+  // Match DD/MM/YYYY or DD-MM-YYYY
+  const matchesDMY = str.match(/^(0?[1-9]|[12]\d|3[01])[-/\.](0?[1-9]|1[0-2])[-/\.](\d{4})$/);
+  if (matchesDMY) {
+    const [, day, month, year] = matchesDMY;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  // Match YYYY-MM-DD...
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.substring(0, 10);
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  return getTodayDateString();
+}
+

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { 
   Plus, 
   Search, 
@@ -16,7 +16,11 @@ import {
   Filter,
   AlertTriangle,
   Timer,
-  Building2
+  Building2,
+  Users,
+  Layers,
+  ArrowRight,
+  UserCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +34,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { siklusSchema, endSiklusSchema, type SiklusInput, type EndSiklusInput } from "@/validators/siklus";
 import { formatDate } from "@/lib/utils";
+import { usePokdakan } from "@/context/pokdakan-context";
 
 interface TambakItem {
   tambak_id: string;
@@ -48,8 +53,9 @@ interface SiklusItem {
 }
 
 export default function SiklusPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTambakId = searchParams.get("tambakId") || "all";
+  const { activeTambak, activeAnggota, anggotaList, tambakList, selectContext } = usePokdakan();
 
   const [cycles, setCycles] = useState<SiklusItem[]>([]);
   const [tambaks, setTambaks] = useState<TambakItem[]>([]);
@@ -59,8 +65,7 @@ export default function SiklusPage() {
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTambakId, setSelectedTambakId] = useState(initialTambakId);
-  const [statusFilter, setStatusFilter] = useState("all"); // all, aktif, selesai
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -81,9 +86,9 @@ export default function SiklusPage() {
   } = useForm<SiklusInput>({
     resolver: zodResolver(siklusSchema) as any,
     defaultValues: {
-      tambak_id: "",
-      nomor_siklus: "" as any,
-      tanggal_mulai: "",
+      tambak_id: activeTambak?.tambak_id || "",
+      nomor_siklus: 1,
+      tanggal_mulai: new Date().toISOString().split("T")[0],
     },
   });
 
@@ -95,20 +100,20 @@ export default function SiklusPage() {
   } = useForm<EndSiklusInput>({
     resolver: zodResolver(endSiklusSchema) as any,
     defaultValues: {
-      tanggal_selesai: "",
+      tanggal_selesai: new Date().toISOString().split("T")[0],
       status: "selesai",
     },
   });
 
   useEffect(() => {
-    fetchInitialData();
-  }, []);
+    fetchSiklusData();
+  }, [activeTambak]);
 
   useEffect(() => {
     applyFilters();
-  }, [cycles, searchQuery, selectedTambakId, statusFilter]);
+  }, [cycles, activeTambak, statusFilter, searchQuery]);
 
-  const fetchInitialData = async () => {
+  const fetchSiklusData = async () => {
     setIsLoading(true);
     try {
       const [resSiklus, resTambak] = await Promise.all([
@@ -131,9 +136,9 @@ export default function SiklusPage() {
   const applyFilters = () => {
     let result = [...cycles];
 
-    // Filter Tambak
-    if (selectedTambakId !== "all") {
-      result = result.filter((c) => c.tambak_id === selectedTambakId);
+    // Filter Tambak Aktif Context
+    if (activeTambak) {
+      result = result.filter((c) => c.tambak_id === activeTambak.tambak_id);
     }
 
     // Filter Status
@@ -141,7 +146,7 @@ export default function SiklusPage() {
       result = result.filter((c) => c.status === statusFilter);
     }
 
-    // Filter Search (Nomor Siklus / Nama Tambak)
+    // Filter Search
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
       result = result.filter((c) => {
@@ -175,15 +180,15 @@ export default function SiklusPage() {
         body: JSON.stringify(data),
       });
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Gagal memulai siklus");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal memulai siklus baru");
 
       toast.success("Siklus budidaya berhasil dimulai!");
       setIsAddOpen(false);
       resetAdd();
-      fetchInitialData();
+      await fetchSiklusData();
     } catch (err: any) {
-      toast.error(err.message || "Gagal menyimpan siklus");
+      toast.error(err.message || "Terjadi kesalahan saat memulai siklus");
     } finally {
       setIsSubmitting(false);
     }
@@ -191,37 +196,32 @@ export default function SiklusPage() {
 
   const onEndSubmit = async (data: EndSiklusInput) => {
     if (!selectedCycle) return;
-    
-    // Validasi tanggal selesai tidak boleh lebih kecil dari tanggal tebar/mulai
-    if (new Date(data.tanggal_selesai) < new Date(selectedCycle.tanggal_mulai)) {
-      toast.error("Tanggal selesai tidak boleh lebih awal dari tanggal mulai siklus!");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/siklus/${selectedCycle.siklus_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          tanggal_selesai: data.tanggal_selesai,
+          status: "selesai",
+        }),
       });
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Gagal mengakhiri siklus");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal mengakhiri siklus");
 
-      toast.success("Siklus berhasil diselesaikan!");
+      toast.success("Siklus budidaya berhasil diakhiri (Panen/Selesai)");
       setIsEndOpen(false);
-      resetEnd();
       setSelectedCycle(null);
-      fetchInitialData();
+      await fetchSiklusData();
     } catch (err: any) {
-      toast.error(err.message || "Gagal mengakhiri siklus");
+      toast.error(err.message || "Terjadi kesalahan saat mengakhiri siklus");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteConfirm = async () => {
+  const onDeleteConfirm = async () => {
     if (!selectedCycle) return;
     setIsSubmitting(true);
     try {
@@ -229,338 +229,325 @@ export default function SiklusPage() {
         method: "DELETE",
       });
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Gagal menghapus siklus");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal menghapus siklus");
 
-      toast.success("Siklus berhasil dihapus!");
+      toast.success("Data siklus berhasil dihapus!");
       setIsDeleteOpen(false);
       setSelectedCycle(null);
-      fetchInitialData();
+      await fetchSiklusData();
     } catch (err: any) {
-      toast.error(err.message || "Gagal menghapus siklus");
+      toast.error(err.message || "Terjadi kesalahan saat menghapus siklus");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const openEndDialog = (cycle: SiklusItem) => {
-    setSelectedCycle(cycle);
-    setIsEndOpen(true);
-  };
+  useEffect(() => {
+    if (!activeTambak && !activeAnggota && !isLoading) {
+      router.push("/dashboard");
+    }
+  }, [activeTambak, activeAnggota, isLoading, router]);
 
-  const openDeleteDialog = (cycle: SiklusItem) => {
-    setSelectedCycle(cycle);
-    setIsDeleteOpen(true);
-  };
-
-  return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
-      {/* Header Banner */}
-      <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 text-slate-900 shadow-2xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-              <Timer className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Siklus Budidaya Tambak</h3>
-              <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
-                Kelola pencatatan bibit, penimbangan pertumbuhan, dan hasil panen di setiap siklus.
-              </p>
-            </div>
-          </div>
-          {tambaks.length > 0 && (
-            <Button 
-              onClick={() => setIsAddOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 font-bold text-xs sm:text-sm rounded-xl h-11 px-5 text-white shrink-0 w-full sm:w-auto"
-            >
-              <Plus className="mr-1.5 h-4 w-4" /> Mulai Siklus Baru
-            </Button>
-          )}
+  // ─── KONDISI 1: JIKA BELUM PILIH ANGGOTA (Direct Redirect ke Dashboard Unpersonal) ─
+  if (!activeTambak && !activeAnggota) {
+    return (
+      <div className="flex h-[65vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm font-semibold text-slate-500">Mengalihkan ke Dashboard Pokdakan...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Warning if no Tambak exists */}
-      {tambaks.length === 0 && !isLoading && (
-        <Card className="border border-amber-200 bg-amber-50/50 shadow-2xs rounded-2xl">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-xs font-bold text-amber-900">Belum Ada Kolam Tambak Terdaftar</h4>
-              <p className="text-xs text-amber-800 mt-0.5 leading-relaxed font-normal">
-                Anda perlu menambahkan sekurang-kurangnya 1 kolam tambak terlebih dahulu sebelum bisa membuat siklus baru.
+  // ─── KONDISI 2: ANGGOTA DIPILIH TAPI BELUM PUNYA TAMBAK ─────────────────
+  if (!activeTambak) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center max-w-lg mx-auto space-y-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-inner">
+          <Layers className="h-7 w-7" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-slate-900">Belum Memiliki Aset Tambak</h3>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            Anggota <strong className="text-slate-700 font-semibold">{activeAnggota?.nama_anggota}</strong> belum memiliki aset tambak terdaftar. Tambahkan tambak pertama untuk mulai mengelola siklus budidaya.
+          </p>
+        </div>
+        <Button
+          onClick={() => router.push("/tambak")}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl h-10 px-5"
+        >
+          + Tambah Tambak Pertama
+        </Button>
+      </div>
+    );
+  }
+
+  // ─── KONDISI 2: TAMBAK AKTIF DIPILIH (Context Ready) ─────────────────────
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-300">
+      {/* Context Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-slate-200/80 p-4 rounded-2xl shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 font-bold border border-blue-100">
+            <Layers className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 capitalize">
+              {activeTambak.nama_tambak}
+              <span className="text-xs font-normal text-slate-500">• Luas: {activeTambak.luas_tambak.toLocaleString("id-ID")} m²</span>
+            </h3>
+            {activeAnggota && (
+              <p className="text-xs text-slate-500 font-medium">
+                Pemilik: <span className="font-semibold text-slate-700">{activeAnggota.nama_anggota}</span>
               </p>
-              <Link href="/tambak" className="inline-block mt-2">
-                <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs h-8 px-3">
-                  Tambah Kolam Tambak
+            )}
+          </div>
+        </div>
+
+        <Button
+          onClick={() => {
+            resetAdd({
+              tambak_id: activeTambak.tambak_id,
+              nomor_siklus: cycles.filter((c) => c.tambak_id === activeTambak.tambak_id).length + 1,
+              tanggal_mulai: new Date().toISOString().split("T")[0],
+            });
+            setIsAddOpen(true);
+          }}
+          className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl h-10 px-4 text-xs text-white shrink-0 shadow-2xs gap-1.5"
+        >
+          <Plus className="h-4 w-4" /> Mulai Siklus Baru
+        </Button>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+          <Input
+            type="text"
+            placeholder="Cari nomor siklus..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 h-10 rounded-xl border-slate-200 bg-white text-xs text-slate-800 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-blue-600 shadow-2xs"
+          />
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-600"
+        >
+          <option value="all">Semua Status (Aktif &amp; Selesai)</option>
+          <option value="aktif">Status Aktif</option>
+          <option value="selesai">Status Selesai (Panen)</option>
+        </select>
+      </div>
+
+      {/* Grid Data Siklus Budidaya */}
+      {isLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+            <p className="text-xs font-semibold text-slate-500">Memuat data siklus budidaya...</p>
+          </div>
+        </div>
+      ) : paginatedCycles.length > 0 ? (
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {paginatedCycles.map((c) => {
+              const isAktif = c.status === "aktif";
+
+              return (
+                <Card
+                  key={c.siklus_id}
+                  className={`transition-all shadow-2xs hover:shadow-md rounded-2xl p-4 flex flex-col justify-between bg-white border ${
+                    isAktif
+                      ? "border-2 border-emerald-500 bg-emerald-50/10"
+                      : "border-slate-200 hover:border-blue-300"
+                  }`}
+                >
+                  <div className="space-y-3">
+                    {/* Header Badge & Action Buttons */}
+                    <div className="flex items-center justify-between gap-2">
+                      {isAktif ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          Siklus Aktif
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 border border-slate-200">
+                          <CheckCircle className="h-3.5 w-3.5 text-slate-400" />
+                          Panen / Selesai
+                        </span>
+                      )}
+
+                      <div className="flex items-center gap-1">
+                        {isAktif && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedCycle(c);
+                              resetEnd({
+                                tanggal_selesai: new Date().toISOString().split("T")[0],
+                                status: "selesai",
+                              });
+                              setIsEndOpen(true);
+                            }}
+                            className="h-7 px-2 text-amber-700 hover:bg-amber-50 rounded-lg text-xs font-bold gap-1"
+                            title="Akhiri Siklus (Panen)"
+                          >
+                            <CheckCircle className="h-3.5 w-3.5 text-amber-600" /> Akhiri
+                          </Button>
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedCycle(c);
+                            setIsDeleteOpen(true);
+                          }}
+                          className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Hapus Siklus"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Title & Info Box */}
+                    <div className="space-y-2">
+                      <h3 className="text-base font-bold text-slate-900 capitalize flex items-center gap-2">
+                        <Activity className="h-4.5 w-4.5 text-blue-600 shrink-0" />
+                        Siklus Budidaya #{c.nomor_siklus}
+                      </h3>
+
+                      <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-100/80 text-xs">
+                        <div className="flex items-center justify-between text-slate-600">
+                          <span className="font-semibold text-slate-500">Tanggal Mulai:</span>
+                          <span className="font-bold text-slate-900">{formatDate(c.tanggal_mulai)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-slate-600 pt-1.5 border-t border-slate-200/50">
+                          <span className="font-semibold text-slate-500">Tanggal Selesai:</span>
+                          <span className="font-bold text-slate-900">
+                            {c.tanggal_selesai ? formatDate(c.tanggal_selesai) : <span className="text-slate-400 font-normal">Sedang Berjalan</span>}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Action Button */}
+                  <div className="pt-3">
+                    <Link href={`/siklus/${c.siklus_id}`}>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs h-10 px-4 shadow-2xs gap-1.5">
+                        <Eye className="h-3.5 w-3.5" /> Buka &amp; Kelola Siklus <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+              <p className="text-xs text-slate-500">
+                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredCycles.length)} dari {filteredCycles.length} siklus
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-8 w-8 rounded-lg"
+                >
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
-              </Link>
+                <span className="text-xs font-bold px-2 text-slate-700">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-8 w-8 rounded-lg"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </CardContent>
+          )}
+        </div>
+      ) : (
+        <Card className="border border-slate-200 p-8 text-center bg-white rounded-2xl shadow-2xs">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mx-auto mb-3">
+            <Activity className="h-6 w-6" />
+          </div>
+          <h4 className="text-sm font-bold text-slate-900 mb-1">Belum Ada Siklus Budidaya</h4>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4 leading-relaxed">
+            Klik tombol "+ Mulai Siklus Baru" di atas untuk memulai pencatatan siklus pertama pada tambak {activeTambak.nama_tambak}.
+          </p>
         </Card>
       )}
 
-      {/* Filter & Search Bar */}
-      <Card className="border-2 border-slate-100 shadow-2xs rounded-3xl">
-        <CardContent className="p-4 flex flex-col md:flex-row gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-            <Input
-              placeholder="Cari nama kolam atau nomor siklus..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 rounded-2xl border-slate-200 h-11 focus-visible:ring-indigo-600 font-medium text-slate-800"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Filter Tambak */}
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5 text-slate-500 shrink-0" />
-              <select
-                value={selectedTambakId}
-                onChange={(e) => setSelectedTambakId(e.target.value)}
-                className="h-11 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-600"
-              >
-                <option value="all">Semua Kolam</option>
-                {tambaks.map((t) => (
-                  <option key={t.tambak_id} value={t.tambak_id}>
-                    {t.nama_tambak}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filter Status */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-11 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-600"
-            >
-              <option value="all">Semua Status</option>
-              <option value="aktif">Sedang Berjalan (Aktif)</option>
-              <option value="selesai">Sudah Panen (Selesai)</option>
-            </select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Table Content */}
-      <Card className="border-2 border-slate-100 shadow-2xs rounded-3xl overflow-hidden">
-        {isLoading ? (
-          <div className="flex h-60 items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-              <p className="text-xs text-slate-500 font-bold">Memuat data siklus budidaya...</p>
-            </div>
-          </div>
-        ) : paginatedCycles.length > 0 ? (
-          <div className="p-4 sm:p-6 flex flex-col gap-4">
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <Table>
-                <TableHeader className="bg-slate-100/70">
-                  <TableRow className="border-b border-slate-200">
-                    <TableHead className="font-extrabold text-slate-900 text-xs uppercase">Kolam Tambak</TableHead>
-                    <TableHead className="w-[100px] text-center font-extrabold text-slate-900 text-xs uppercase">Siklus</TableHead>
-                    <TableHead className="w-[130px] text-center font-extrabold text-slate-900 text-xs uppercase">Tanggal Mulai</TableHead>
-                    <TableHead className="w-[130px] text-center font-extrabold text-slate-900 text-xs uppercase">Tanggal Selesai</TableHead>
-                    <TableHead className="w-[120px] text-center font-extrabold text-slate-900 text-xs uppercase">Status</TableHead>
-                    <TableHead className="w-[280px] text-center font-extrabold text-slate-900 text-xs uppercase">Tindakan</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedCycles.map((cycle) => (
-                    <TableRow key={cycle.siklus_id} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors">
-                      <TableCell className="font-black text-slate-900 text-sm">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 font-bold text-xs border border-blue-100">
-                            <Building2 className="h-4 w-4" />
-                          </div>
-                          <span>{getTambakName(cycle.tambak_id)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center font-bold text-slate-800 text-xs">Siklus #{cycle.nomor_siklus}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-600 text-xs">{formatDate(cycle.tanggal_mulai)}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-600 text-xs">
-                        {formatDate(cycle.tanggal_selesai)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-extrabold ${
-                          cycle.status === "aktif" 
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
-                            : "bg-slate-100 text-slate-700 border border-slate-200"
-                        }`}>
-                          <span className={`h-2 w-2 rounded-full ${cycle.status === "aktif" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-                          {cycle.status === "aktif" ? "Sedang Berjalan" : "Sudah Panen"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Link href={`/siklus/${cycle.siklus_id}`}>
-                            <Button size="sm" className="h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 px-3 shadow-2xs">
-                              <Eye className="h-4 w-4" /> Detail & Catat
-                            </Button>
-                          </Link>
-                          {cycle.status === "aktif" && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => openEndDialog(cycle)}
-                              className="h-9 rounded-xl border-emerald-300 text-emerald-800 hover:bg-emerald-50 font-bold text-xs gap-1.5 px-3"
-                            >
-                              <CheckCircle className="h-4 w-4 text-emerald-600" /> Panen
-                            </Button>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => openDeleteDialog(cycle)}
-                            className="h-9 rounded-xl border-red-200 text-red-700 hover:bg-red-50 font-bold text-xs gap-1.5 px-3"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" /> Hapus
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-2 pt-2">
-                <div className="text-xs text-slate-500 font-medium">
-                  Menampilkan <span className="font-bold">{startIndex + 1}</span> sampai{" "}
-                  <span className="font-bold">
-                    {Math.min(startIndex + itemsPerPage, filteredCycles.length)}
-                  </span>{" "}
-                  dari <span className="font-bold">{filteredCycles.length}</span> siklus
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="rounded-xl border-slate-150 text-slate-600 h-8 px-2.5"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs font-bold px-2.5 text-slate-700">
-                    Halaman {currentPage} dari {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="rounded-xl border-slate-150 text-slate-600 h-8 px-2.5"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-4 shadow-inner">
-              <Activity className="h-7 w-7" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900 mb-1">Belum Ada Siklus</h3>
-            <p className="text-xs text-slate-500 max-w-sm leading-relaxed mb-6">
-              {searchQuery || selectedTambakId !== "all" || statusFilter !== "all"
-                ? "Tidak ada hasil siklus yang cocok dengan filter atau pencarian Anda."
-                : "Anda belum mencatat siklus budidaya apapun. Mulai siklus budidaya pertama kolam Anda untuk mencatat perkembangan benur, sampling harian, dan hasil panen."}
-            </p>
-
-          </div>
-        )}
-      </Card>
-
-      {/* dialogs */}
-
-      {/* 1. Start Cycle Dialog */}
+      {/* Modal Add Siklus */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
+        <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Mulai Siklus Baru</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Mulai Siklus Budidaya Baru</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Buat siklus budidaya baru untuk kolam tambak terdaftar.
+              Siklus baru untuk tambak <strong className="capitalize">{activeTambak.nama_tambak}</strong> ({activeAnggota?.nama_anggota}).
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAddSubmit(onAddSubmit)} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label htmlFor="tambak_id">Pilih Kolam Tambak</Label>
-              <select
-                id="tambak_id"
-                disabled={isSubmitting}
-                {...registerAdd("tambak_id")}
-                className="w-full h-10 rounded-xl border border-slate-150 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
-              >
-                <option value="">-- Pilih Tambak --</option>
-                {tambaks.map((t) => (
-                  <option key={t.tambak_id} value={t.tambak_id}>
-                    {t.nama_tambak} ({t.lokasi})
-                  </option>
-                ))}
-              </select>
-              {addErrors.tambak_id && (
-                <p className="text-xs text-red-500">{addErrors.tambak_id.message}</p>
-              )}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="nomor_siklus">Nomor Siklus Ke-</Label>
+          <form onSubmit={handleAddSubmit(onAddSubmit)} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="nomor_siklus" className="text-xs font-bold text-slate-700">Nomor Siklus *</Label>
               <Input
                 id="nomor_siklus"
                 type="number"
-                placeholder="1"
                 disabled={isSubmitting}
-                {...registerAdd("nomor_siklus")}
-                className={addErrors.nomor_siklus ? "border-red-500 focus-visible:ring-red-500" : ""}
+                {...registerAdd("nomor_siklus", { valueAsNumber: true })}
+                className="h-10 rounded-xl text-xs border-slate-200"
               />
-              {addErrors.nomor_siklus && (
-                <p className="text-xs text-red-500">{addErrors.nomor_siklus.message}</p>
-              )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tanggal_mulai">Tanggal Mulai Siklus</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="tanggal_mulai" className="text-xs font-bold text-slate-700">Tanggal Mulai Siklus *</Label>
               <Input
                 id="tanggal_mulai"
                 type="date"
                 disabled={isSubmitting}
                 {...registerAdd("tanggal_mulai")}
-                className={addErrors.tanggal_mulai ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className="h-10 rounded-xl text-xs border-slate-200"
               />
-              {addErrors.tanggal_mulai && (
-                <p className="text-xs text-red-500">{addErrors.tanggal_mulai.message}</p>
-              )}
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4 sm:justify-end">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-3 sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsAddOpen(false)}
                 disabled={isSubmitting}
-                className="rounded-xl font-semibold border-slate-150 text-slate-600 w-full sm:w-auto"
+                className="rounded-xl font-semibold border-slate-200 text-slate-600 text-xs h-10 w-full sm:w-auto"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white text-xs h-10 w-full sm:w-auto"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Memproses...
+                    Menyimpan...
                   </>
                 ) : (
                   "Mulai Siklus"
@@ -571,62 +558,46 @@ export default function SiklusPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 2. End Cycle Dialog */}
+      {/* Modal End Siklus */}
       <Dialog open={isEndOpen} onOpenChange={setIsEndOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl">
+        <DialogContent className="sm:max-w-[425px] rounded-2xl border-slate-100 shadow-xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900">Selesaikan Siklus Budidaya</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Akhiri Siklus Budidaya</DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Ubah status siklus ini menjadi Selesai. Masukkan tanggal panen/penyelesaian di bawah.
+              Tandai siklus ini telah panen / selesai.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleEndSubmit(onEndSubmit)} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label>Kolam Tambak</Label>
-              <Input
-                value={selectedCycle ? `${getTambakName(selectedCycle.tambak_id)} - Siklus #${selectedCycle.nomor_siklus}` : ""}
-                disabled={true}
-                className="bg-slate-50 font-bold border-slate-150"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Tanggal Mulai (Tebar)</Label>
-              <Input
-                value={selectedCycle?.tanggal_mulai || ""}
-                disabled={true}
-                className="bg-slate-50 font-medium border-slate-150"
-              />
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tanggal_selesai">Tanggal Selesai (Panen)</Label>
+          <form onSubmit={handleEndSubmit(onEndSubmit)} className="space-y-4 pt-2">
+            <input type="hidden" {...registerEnd("status")} value="selesai" />
+            <div className="space-y-1.5">
+              <Label htmlFor="tanggal_selesai" className="text-xs font-bold text-slate-700">Tanggal Selesai / Panen *</Label>
               <Input
                 id="tanggal_selesai"
                 type="date"
                 disabled={isSubmitting}
                 {...registerEnd("tanggal_selesai")}
-                className={endErrors.tanggal_selesai ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={`h-10 rounded-xl text-xs ${endErrors.tanggal_selesai ? "border-red-500" : "border-slate-200"}`}
               />
               {endErrors.tanggal_selesai && (
                 <p className="text-xs text-red-500">{endErrors.tanggal_selesai.message}</p>
               )}
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-4 sm:justify-end">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-3 sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsEndOpen(false)}
                 disabled={isSubmitting}
-                className="rounded-xl font-semibold border-slate-150 text-slate-600 w-full sm:w-auto"
+                className="rounded-xl font-semibold border-slate-200 text-slate-600 text-xs h-10 w-full sm:w-auto"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="rounded-xl font-semibold bg-green-600 hover:bg-green-700 w-full sm:w-auto"
+                className="rounded-xl font-bold bg-amber-600 hover:bg-amber-700 text-white text-xs h-10 w-full sm:w-auto"
               >
                 {isSubmitting ? (
                   <>
@@ -642,19 +613,17 @@ export default function SiklusPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 3. Delete confirm dialog */}
+      {/* Modal Delete Siklus */}
       <ConfirmDialog
         isOpen={isDeleteOpen}
         onClose={() => {
           setIsDeleteOpen(false);
           setSelectedCycle(null);
         }}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={onDeleteConfirm}
         title="Hapus Siklus Budidaya?"
-        description={`Apakah Anda yakin ingin menghapus "${getTambakName(selectedCycle?.tambak_id || "")} - Siklus #${selectedCycle?.nomor_siklus}"? Seluruh data penebaran benur, operasional harian, sampling, dan hasil panen untuk siklus ini akan dihapus secara permanen.`}
+        description={`Apakah Anda yakin ingin menghapus Siklus #${selectedCycle?.nomor_siklus}? Seluruh komoditas dan riwayat benur, operasional, sampling, dan panen di siklus ini akan terhapus.`}
         isLoading={isSubmitting}
-        confirmText="Ya, Hapus"
-        cancelText="Batal"
       />
     </div>
   );

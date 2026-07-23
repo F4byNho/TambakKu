@@ -4,7 +4,7 @@ import { fetchFromGAS, postToGAS } from "@/lib/gas-client";
 import { tambakSchema } from "@/validators/tambak";
 import crypto from "crypto";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getSession();
     if (!session) {
@@ -12,9 +12,13 @@ export async function GET() {
     }
     
     const { userId, role } = session;
+    const { searchParams } = new URL(req.url);
+    const anggotaId = searchParams.get("anggotaId") || "";
+
     const res = await fetchFromGAS<any[]>("getTambak", {
       userId,
       isAdmin: role === "admin" ? "true" : "false",
+      anggotaId,
     });
     
     if (res.error) {
@@ -48,16 +52,19 @@ export async function POST(req: Request) {
       );
     }
     
-    const { nama_tambak, lokasi, luas_tambak, keterangan } = result.data;
+    const { nama_tambak, anggota_id, lokasi, luas_tambak, status_tambak, keterangan, catatan } = result.data;
     const tambakId = crypto.randomUUID();
     
     const payload = {
       tambak_id: tambakId,
       user_id: session.userId,
+      anggota_id,
       nama_tambak,
-      lokasi,
+      lokasi: lokasi || "",
       luas_tambak,
+      status_tambak: status_tambak || "Aktif",
       keterangan: keterangan || "",
+      catatan: catatan || "",
     };
     
     const res = await postToGAS("createTambak", payload);

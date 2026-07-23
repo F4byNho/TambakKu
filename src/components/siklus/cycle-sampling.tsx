@@ -14,12 +14,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatNumber, formatDate } from "@/lib/utils";
+import { formatNumber, formatDate, formatDateForInput } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { samplingSchema, type SamplingInput } from "@/validators/budidaya";
 import { getCommodityConfig } from "@/lib/commodity-config";
@@ -233,8 +233,9 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
 
   const openEditDialog = (log: SamplingItem) => {
     setSelectedLog(log);
+    const rawDate = (log as any).tanggal_sampling || log.tanggal;
     resetEdit({
-      tanggal: log.tanggal,
+      tanggal: formatDateForInput(rawDate),
       jumlah_udang: log.jumlah_udang,
       berat_total: log.berat_total,
       abw: log.abw,
@@ -263,9 +264,9 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
         {isCycleActive && (
           <Button
             onClick={() => setIsAddOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-xs h-11 px-5 text-xs sm:text-sm text-white shrink-0 w-full sm:w-auto"
+            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-2xs h-10 px-4 text-xs text-white shrink-0 w-full sm:w-auto gap-1.5"
           >
-            <Plus className="mr-1.5 h-4 w-4" /> Catat Pertumbuhan
+            <Plus className="h-4 w-4" /> Catat Pertumbuhan
           </Button>
         )}
       </div>
@@ -349,86 +350,89 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
         </Card>
       )}
 
-      {/* Main Table */}
-      <Card className="border-slate-100 shadow-sm">
-        {isLoading ? (
-          <div className="flex h-48 items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-semibold">Memuat riwayat...</p>
-            </div>
+      {/* Card Grid */}
+      {isLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <p className="text-xs text-slate-500 font-semibold">Memuat riwayat...</p>
           </div>
-        ) : logs.length > 0 ? (
-          <div className="p-4 sm:p-6">
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow className="border-b border-slate-100">
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Tanggal</TableHead>
-                    {!config.showSizeField && jenisKomoditas === "rumput_laut" ? null : (
-                      <TableHead className="w-[130px] text-center font-bold text-slate-700">{config.growthQtyLabel}</TableHead>
-                    )}
-                    <TableHead className="w-[130px] text-center font-bold text-slate-700">{config.growthWeightLabel}</TableHead>
-                    <TableHead className="w-[200px] text-center font-bold text-slate-700">{config.abwLabel}</TableHead>
-                    {config.showSizeField && (
-                      <TableHead className="w-[150px] text-center font-bold text-slate-700">Size (ekor/kg)</TableHead>
-                    )}
-                    {isCycleActive && <TableHead className="w-[120px] text-center font-bold text-slate-700">Aksi</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map((log) => (
-                    <TableRow key={log.sampling_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="text-center font-medium text-slate-600">{formatDate((log as any).tanggal_sampling || log.tanggal)}</TableCell>
-                      {!config.showSizeField && jenisKomoditas === "rumput_laut" ? null : (
-                        <TableCell className="text-center font-semibold text-slate-700">{formatNumber(log.jumlah_udang)} ekor</TableCell>
-                      )}
-                      <TableCell className="text-center font-semibold text-slate-700">{formatNumber(log.berat_total)} gram</TableCell>
-                      <TableCell className="text-center font-bold text-blue-600">{log.abw} g</TableCell>
-                      {config.showSizeField && (
-                        <TableCell className="text-center font-bold text-green-600">Size {log.size}</TableCell>
-                      )}
-                      {isCycleActive && (
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(log)}
-                              className="h-8.5 w-8.5 text-amber-600 hover:bg-amber-50 rounded-lg"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openDeleteDialog(log)}
-                              className="h-8.5 w-8.5 text-red-600 hover:bg-red-50 rounded-lg"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+        </div>
+      ) : logs.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {logs.map((log) => (
+            <Card
+              key={log.sampling_id}
+              className="transition-all shadow-2xs hover:shadow-md rounded-2xl p-4 flex flex-col justify-between bg-white border border-slate-200 hover:border-blue-300"
+            >
+              <div className="space-y-3">
+                {/* Header: Tanggal & Actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                    <Calendar className="h-3 w-3" />
+                    {formatDate((log as any).tanggal_sampling || log.tanggal)}
+                  </span>
+                  {isCycleActive && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(log)}
+                        className="h-7 w-7 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openDeleteDialog(log)}
+                        className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Metrics */}
+                <div className="space-y-2">
+                  {!(jenisKomoditas === "rumput_laut") && (
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-100/80">
+                      <span className="text-xs text-slate-500 font-semibold">{config.growthQtyLabel}:</span>
+                      <span className="font-bold text-slate-700 text-xs">{formatNumber(log.jumlah_udang)} ekor</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-100/80">
+                    <span className="text-xs text-slate-500 font-semibold">{config.growthWeightLabel}:</span>
+                    <span className="font-bold text-slate-700 text-xs">{formatNumber(log.berat_total)} gram</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50/60 border border-blue-100/80">
+                    <span className="text-xs text-slate-500 font-semibold">{config.abwLabel}:</span>
+                    <span className="font-black text-blue-700 text-xs">{log.abw} g</span>
+                  </div>
+                  {config.showSizeField && (
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50/60 border border-emerald-100/80">
+                      <span className="text-xs text-slate-500 font-semibold">Size:</span>
+                      <span className="font-black text-emerald-700 text-xs">Size {log.size}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
+            <Scale className="h-6 w-6" />
           </div>
-        ) : (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
-              <Scale className="h-6 w-6" />
-            </div>
-            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Pertumbuhan</h4>
-            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-              Silakan lakukan pengukuran pertumbuhan {config.name.toLowerCase()} secara berkala untuk mencatat perkembangannya.
-            </p>
-          </div>
-        )}
-      </Card>
+          <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Pertumbuhan</h4>
+          <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+            Silakan lakukan pengukuran pertumbuhan {config.name.toLowerCase()} secara berkala untuk mencatat perkembangannya.
+          </p>
+        </div>
+      )}
 
       {/* dialogs */}
 

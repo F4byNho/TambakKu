@@ -20,12 +20,14 @@ import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { usePokdakan } from "@/context/pokdakan-context";
 
 interface TambakItem {
   tambak_id: string;
   nama_tambak: string;
   lokasi: string;
   luas_tambak: number;
+  nama_anggota?: string;
 }
 
 interface SiklusItem {
@@ -48,6 +50,7 @@ interface LaporanDataset {
 }
 
 export default function LaporanPage() {
+  const { activeTambak, activeAnggota } = usePokdakan();
   const [tambaks, setTambaks] = useState<TambakItem[]>([]);
   const [cycles, setCycles] = useState<SiklusItem[]>([]);
   const [filteredCycles, setFilteredCycles] = useState<SiklusItem[]>([]);
@@ -61,10 +64,11 @@ export default function LaporanPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchLoading, setIsFetchLoading] = useState(true);
   const [reportData, setReportData] = useState<LaporanDataset | null>(null);
+  const [activeTab, setActiveTab] = useState<"pokdakan" | "siklus" | "ops">("pokdakan");
 
   useEffect(() => {
     fetchFilterOptions();
-  }, []);
+  }, [activeAnggota, activeTambak]);
 
   useEffect(() => {
     if (selectedTambakId === "all") {
@@ -80,15 +84,33 @@ export default function LaporanPage() {
   const fetchFilterOptions = async () => {
     setIsFetchLoading(true);
     try {
+      const urlTambak = activeAnggota 
+        ? `/api/tambak?anggotaId=${activeAnggota.anggota_id}`
+        : "/api/tambak";
+        
       const [resTambak, resSiklus] = await Promise.all([
-        fetch("/api/tambak"),
+        fetch(urlTambak),
         fetch("/api/siklus"),
       ]);
       const jsonTambak = await resTambak.json();
       const jsonSiklus = await resSiklus.json();
 
-      setTambaks(jsonTambak.data || []);
-      setCycles(jsonSiklus.data || []);
+      const fetchedTambaks: TambakItem[] = jsonTambak.data || [];
+      let fetchedCycles: SiklusItem[] = jsonSiklus.data || [];
+
+      if (activeAnggota) {
+        const memberTambakIds = new Set(fetchedTambaks.map(t => t.tambak_id));
+        fetchedCycles = fetchedCycles.filter(c => memberTambakIds.has(c.tambak_id));
+      }
+
+      setTambaks(fetchedTambaks);
+      setCycles(fetchedCycles);
+
+      if (activeTambak && fetchedTambaks.some(t => t.tambak_id === activeTambak.tambak_id)) {
+        setSelectedTambakId(activeTambak.tambak_id);
+      } else if (fetchedTambaks.length === 1) {
+        setSelectedTambakId(fetchedTambaks[0].tambak_id);
+      }
     } catch (err: any) {
       toast.error("Gagal memuat filter opsi");
     } finally {
@@ -163,7 +185,8 @@ export default function LaporanPage() {
         const benurCost = reportData.benur.filter(b => b.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
         const opsCost = reportData.operasional.filter(o => o.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
         const revenue = reportData.panen.filter(p => p.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
-        const sKomoditas = reportData.komoditas.filter(k => k.siklus_id === s.siklus_id).map(k => k.nama_komoditas).join(", ");
+        const sKomoditasNames = Array.from(new Set(reportData.komoditas.filter(k => k.siklus_id === s.siklus_id).map(k => k.nama_komoditas).filter(Boolean)));
+        const sKomoditas = sKomoditasNames.join(", ");
         
         return {
           "Kolam Tambak": getTambakName(s.tambak_id),
@@ -230,6 +253,80 @@ export default function LaporanPage() {
       const wsPanen = XLSX.utils.json_to_sheet(sheetPanenData);
       XLSX.utils.book_append_sheet(wb, wsPanen, "Hasil Panen");
 
+      // 6. Sheet Data Budidaya & Produksi Pokdakan
+      const filteredBenurs = reportData.benur || [];
+      const filteredPanens = reportData.panen || [];
+
+      const validSiklusIds = new Set((reportData.siklus || []).map(s => s.siklus_id));
+      const rawKomoditas = (reportData.komoditas || []).filter(k => !k.siklus_id || validSiklusIds.has(k.siklus_id));
+
+      const uniqueCommodityMap = new Map<string, any>();
+      rawKomoditas.forEach((k) => {
+        const key = (k.nama_komoditas || k.jenis_komoditas || "Udang Vaname").trim().toLowerCase();
+        if (!uniqueCommodityMap.has(key)) {
+          uniqueCommodityMap.set(key, k);
+        }
+      });
+
+      let commoditiesToDisplay = Array.from(uniqueCommodityMap.values());
+      if (!commoditiesToDisplay || commoditiesToDisplay.length === 0) {
+        const types = Array.from(new Set(filteredBenurs.map(b => b.jenis_udang || "Udang Vaname")));
+        commoditiesToDisplay = (types.length > 0 ? types : ["Udang Vaname"]).map((t, idx) => ({
+          komoditas_id: `derived_${idx}`,
+          nama_komoditas: t,
+          jenis_komoditas: t,
+        }));
+      }
+
+      const sheetPokdakanData = commoditiesToDisplay.map((k, idx) => {
+        const kBenur = filteredBenurs.filter(b => 
+          (k.komoditas_id && !k.komoditas_id.startsWith("derived_") && b.komoditas_id ? b.komoditas_id === k.komoditas_id : true) ||
+          b.jenis_udang?.toLowerCase() === k.nama_komoditas?.toLowerCase()
+        );
+        const kPanen = filteredPanens.filter(p => 
+          (k.komoditas_id && !k.komoditas_id.startsWith("derived_") && p.komoditas_id ? p.komoditas_id === k.komoditas_id : true)
+        );
+
+        const targetBenurs = kBenur.length > 0 ? kBenur : filteredBenurs;
+        const totalBenurTebar = targetBenurs.reduce((sum, b) => sum + Number(b.jumlah_benur || 0), 0);
+        const asalBenihStr = targetBenurs.find(b => b.asal_benih && String(b.asal_benih).trim() !== "")?.asal_benih || "-";
+
+        const targetPanens = kPanen.length > 0 ? kPanen : filteredPanens;
+        const totalPanenKg = targetPanens.reduce((sum, p) => sum + Number(p.berat_panen || 0), 0);
+
+        const totalUdangPanen = targetPanens.reduce((sum, p) => {
+          if (p.jumlah_ekor) return sum + Number(p.jumlah_ekor);
+          if (p.size && p.berat_panen) return sum + (Number(p.berat_panen) * Number(p.size));
+          return sum;
+        }, 0);
+
+        const isSeaweed = k.jenis_komoditas === "rumput_laut" || k.nama_komoditas?.toLowerCase().includes("rumput laut");
+
+        const avgSize = !isSeaweed && (targetPanens.find(p => p.size)?.size || (totalPanenKg > 0 && totalUdangPanen > 0 ? Math.round(totalUdangPanen / totalPanenKg) : "-"));
+
+        let srVal: number | undefined = undefined;
+        if (!isSeaweed && totalBenurTebar > 0 && totalUdangPanen > 0) {
+          srVal = (totalUdangPanen / totalBenurTebar) * 100;
+        } else if (!isSeaweed) {
+          const storedSR = targetPanens.find(p => p.sr_percent !== undefined && Number(p.sr_percent) > 0)?.sr_percent;
+          if (storedSR) srVal = Number(storedSR);
+        }
+
+        return {
+          "No": idx + 1,
+          "Jenis Ikan / Komoditas": k.nama_komoditas || k.jenis_komoditas || "Udang Vaname",
+          "Asal Benih": asalBenihStr,
+          "Jumlah Tebar": totalBenurTebar > 0 ? `${formatNumber(totalBenurTebar)} ${isSeaweed ? "kg" : "ekor"}` : "-",
+          "SR (%)": !isSeaweed && srVal !== undefined ? `${srVal.toFixed(1).replace(".", ",")}%` : "-",
+          "Produksi 1 Siklus": totalPanenKg > 0 ? `${formatNumber(totalPanenKg)} kg` : "-",
+          "Siklus Pemeliharaan": "2-3 kali/tahun",
+          "Ukuran Panen": avgSize && avgSize !== "-" ? `${avgSize} ekor/kg` : "-"
+        };
+      });
+
+      const wsPokdakan = XLSX.utils.json_to_sheet(sheetPokdakanData);
+      XLSX.utils.book_append_sheet(wb, wsPokdakan, "Data Budidaya Pokdakan");
+
       XLSX.writeFile(wb, "Laporan_TambakKu.xlsx");
       toast.success("Excel berhasil diekspor!");
     } catch (err: any) {
@@ -243,43 +340,128 @@ export default function LaporanPage() {
 
     try {
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
 
-      // Header Banner
+      // Header Banner - Executive Dark Slate Header with Royal Accent Bar
+      doc.setFillColor(15, 23, 42); // Slate 900
+      doc.rect(0, 0, pageWidth, 28, "F");
+
+      // Accent Bar Line (Gradient simulation with 2 lines)
       doc.setFillColor(37, 99, 235); // Blue 600
-      doc.rect(0, 0, 210, 26, "F");
+      doc.rect(0, 26, pageWidth * 0.6, 2, "F");
+      doc.setFillColor(16, 185, 129); // Emerald 500
+      doc.rect(pageWidth * 0.6, 26, pageWidth * 0.4, 2, "F");
 
+      // Header Text
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(15);
-      doc.text("TAMBAKKU - LAPORAN BUDIDAYA & KEUANGAN", 14, 12);
+      doc.setFontSize(13);
+      doc.text("TAMBAKKU — LAPORAN BUDIDAYA & KEUANGAN DIGITAL", 14, 13);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.text("Digitalisasi Pencatatan & Operasional Manajemen Tambak Udang / Polikultur", 14, 19);
+      doc.setFontSize(8);
+      doc.setTextColor(203, 213, 225); // Slate 300
+      doc.text("Sistem Digitalisasi Pencatatan, Operasional, & Manajemen Tambak Budidaya", 14, 20);
 
-      // Metadata Info Line
-      doc.setTextColor(71, 85, 105); // Slate 600
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
-      
-      let filterText = "Semua Kolam Tambak & Semua Siklus";
+      // Metadata Summary Box
+      let tambakText = "Semua Kolam Tambak";
+      let siklusText = "Semua Siklus";
       if (selectedTambakId !== "all") {
-        const tName = tambaks.find(t => t.tambak_id === selectedTambakId)?.nama_tambak || "Kolam";
-        filterText = `Kolam: ${tName}`;
+        tambakText = tambaks.find(t => t.tambak_id === selectedTambakId)?.nama_tambak || "Kolam";
         if (selectedSiklusId !== "all") {
           const sNum = cycles.find(c => c.siklus_id === selectedSiklusId)?.nomor_siklus;
-          filterText += ` (Siklus #${sNum})`;
+          siklusText = `Siklus #${sNum}`;
         }
       }
 
-      doc.text(`Filter Area : ${filterText}`, 14, 33);
-      doc.text(`Tanggal Cetak : ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`, 14, 38);
+      const tanggalCetak = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+
+      // Metadata Background Box
+      doc.setFillColor(248, 250, 252); // Slate 50
+      doc.setDrawColor(226, 232, 240); // Slate 200
+      doc.setLineWidth(0.3);
+      doc.roundedRect(14, 32, pageWidth - 28, 14, 2, 2, "FD");
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139); // Slate 500
+      doc.setFont("helvetica", "bold");
+      doc.text("KOLAM / TAMBAK:", 18, 38);
+      doc.text("SIKLUS BUDIDAYA:", 85, 38);
+      doc.text("TANGGAL CETAK:", 145, 38);
+
+      doc.setTextColor(15, 23, 42); // Slate 900
+      doc.setFont("helvetica", "bold");
+      doc.text(tambakText, 18, 43);
+      doc.text(siklusText, 85, 43);
+      doc.text(tanggalCetak, 145, 43);
+
+      // --- Executive KPI Metric Summary Cards (PDF Header Stats) ---
+      const totalBenurCost = reportData.benur.reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
+      const totalOpsCost = reportData.operasional.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
+      const totalModal = totalBenurCost + totalOpsCost;
+      const totalRevenue = reportData.panen.reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
+      const totalLaba = totalRevenue - totalModal;
+      const totalBeratPanen = reportData.panen.reduce((sum, item) => sum + Number(item.berat_panen || 0), 0);
+
+      const kpiCardWidth = (pageWidth - 28 - 9) / 4; // 4 cards with 3mm gap
+      const kpiY = 49;
+      const kpiHeight = 13;
+
+      // KPI Card 1: Total Modal
+      doc.setFillColor(241, 245, 249);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(14, kpiY, kpiCardWidth, kpiHeight, 1.5, 1.5, "FD");
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text("TOTAL MODAL", 17, kpiY + 4.5);
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.text(formatIDR(totalModal), 17, kpiY + 9.5);
+
+      // KPI Card 2: Total Pendapatan
+      doc.setFillColor(236, 253, 245);
+      doc.setDrawColor(167, 243, 208);
+      doc.roundedRect(14 + kpiCardWidth + 3, kpiY, kpiCardWidth, kpiHeight, 1.5, 1.5, "FD");
+      doc.setFontSize(6.5);
+      doc.setTextColor(4, 120, 87);
+      doc.setFont("helvetica", "bold");
+      doc.text("PENDAPATAN", 17 + kpiCardWidth + 3, kpiY + 4.5);
+      doc.setFontSize(8);
+      doc.setTextColor(6, 95, 70);
+      doc.text(formatIDR(totalRevenue), 17 + kpiCardWidth + 3, kpiY + 9.5);
+
+      // KPI Card 3: Laba / Rugi
+      const isProfit = totalLaba >= 0;
+      doc.setFillColor(isProfit ? 240 : 254, isProfit ? 253 : 242, isProfit ? 244 : 242);
+      doc.setDrawColor(isProfit ? 187 : 254, isProfit ? 247 : 202, isProfit ? 208 : 202);
+      doc.roundedRect(14 + (kpiCardWidth + 3) * 2, kpiY, kpiCardWidth, kpiHeight, 1.5, 1.5, "FD");
+      doc.setFontSize(6.5);
+      doc.setTextColor(isProfit ? 21 : 153, isProfit ? 128 : 27, isProfit ? 61 : 27);
+      doc.setFont("helvetica", "bold");
+      doc.text(isProfit ? "LABA BERSIH" : "RUGI BERSIH", 17 + (kpiCardWidth + 3) * 2, kpiY + 4.5);
+      doc.setFontSize(8);
+      doc.setTextColor(isProfit ? 22 : 153, isProfit ? 101 : 27, isProfit ? 52 : 27);
+      doc.text(formatIDR(totalLaba), 17 + (kpiCardWidth + 3) * 2, kpiY + 9.5);
+
+      // KPI Card 4: Total Panen
+      doc.setFillColor(239, 246, 255);
+      doc.setDrawColor(191, 219, 254);
+      doc.roundedRect(14 + (kpiCardWidth + 3) * 3, kpiY, kpiCardWidth, kpiHeight, 1.5, 1.5, "FD");
+      doc.setFontSize(6.5);
+      doc.setTextColor(29, 78, 216);
+      doc.setFont("helvetica", "bold");
+      doc.text("TOTAL HASIL PANEN", 17 + (kpiCardWidth + 3) * 3, kpiY + 4.5);
+      doc.setFontSize(8);
+      doc.setTextColor(30, 58, 138);
+      doc.text(`${formatNumber(totalBeratPanen)} kg`, 17 + (kpiCardWidth + 3) * 3, kpiY + 9.5);
 
       // Section 1: Ringkasan Siklus Table
+      let currentY = 67;
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10.5);
+      doc.setFontSize(9.5);
       doc.setTextColor(15, 23, 42);
-      doc.text("1. RINGKASAN REKAPITULASI SIKLUS & KEUANGAN", 14, 46);
+      doc.text("1. RINGKASAN REKAPITULASI SIKLUS & KEUANGAN", 14, currentY);
 
       const siklusHeaders = [["No", "Kolam Tambak", "Siklus", "Daftar Komoditas", "Mulai", "Status", "Total Modal", "Pendapatan", "Laba / Rugi"]];
       const siklusRows = reportData.siklus.map((s, idx) => {
@@ -288,7 +470,8 @@ export default function LaporanPage() {
         const modal = benurCost + opsCost;
         const revenue = reportData.panen.filter(p => p.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
         const laba = revenue - modal;
-        const sKomoditas = reportData.komoditas.filter(k => k.siklus_id === s.siklus_id).map(k => k.nama_komoditas).join(", ");
+        const sKomoditasNames = Array.from(new Set(reportData.komoditas.filter(k => k.siklus_id === s.siklus_id).map(k => k.nama_komoditas).filter(Boolean)));
+        const sKomoditas = sKomoditasNames.join(", ");
 
         return [
           idx + 1,
@@ -306,10 +489,22 @@ export default function LaporanPage() {
       autoTable(doc, {
         head: siklusHeaders,
         body: siklusRows,
-        startY: 49,
-        theme: "grid",
-        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 7.5, fontStyle: "bold", halign: "center" },
-        bodyStyles: { fontSize: 7, textColor: 40 },
+        startY: currentY + 3,
+        theme: "striped",
+        headStyles: { 
+          fillColor: [30, 41, 59], // Slate 800
+          textColor: 255, 
+          fontSize: 7.5, 
+          fontStyle: "bold", 
+          halign: "center",
+          cellPadding: 2.5
+        },
+        bodyStyles: { fontSize: 7, textColor: 50, cellPadding: 2 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: {
+          lineColor: [226, 232, 240],
+          lineWidth: 0.2,
+        },
         columnStyles: {
           0: { halign: "center", cellWidth: 8 },
           1: { cellWidth: 26 },
@@ -317,42 +512,44 @@ export default function LaporanPage() {
           3: { cellWidth: 30 },
           4: { halign: "center", cellWidth: 20 },
           5: { halign: "center", cellWidth: 16 },
-          6: { halign: "right", cellWidth: 22 },
-          7: { halign: "right", cellWidth: 22 },
-          8: { halign: "right", cellWidth: 24 },
+          6: { halign: "right", cellWidth: 22, fontStyle: "bold" },
+          7: { halign: "right", cellWidth: 22, fontStyle: "bold" },
+          8: { halign: "right", cellWidth: 24, fontStyle: "bold" },
         },
       });
 
-      let currentY = (doc as any).lastAutoTable.finalY + 9;
+      currentY = (doc as any).lastAutoTable.finalY + 10;
 
       // Section 2: Biaya Pengeluaran & Penebaran Bibit
-      if (currentY > 240) {
+      if (currentY > 235) {
         doc.addPage();
         currentY = 20;
       }
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10.5);
+      doc.setFontSize(9.5);
       doc.setTextColor(15, 23, 42);
-      doc.text("2. BIAYA PENGELUARAN OPERASIONAL & PENEBARAN BIBIT", 14, currentY);
+      doc.text("2. DETAIL BIAYA PENGELUARAN OPERASIONAL & BIBIT", 14, currentY);
 
-      const opsHeaders = [["Tanggal", "Komoditas", "Kategori", "Detail / Keterangan", "Nominal (Rp)"]];
+      const opsHeaders = [["Tanggal", "Komoditas", "Kategori Pengeluaran", "Detail / Keterangan", "Nominal (Rp)"]];
       const rawOpsList = [
         ...reportData.benur.map(b => ({
           tanggal: b.tanggal_tebar || b.tanggal,
           komoditas: getKomoditasName(b.komoditas_id),
           kategori: "Penebaran Bibit",
-          nominal: b.total_harga,
+          nominal: Number(b.total_harga || 0),
           ket: `Ukuran ${b.ukuran_PL || "-"} (${formatNumber(b.jumlah_benur)} unit)`
         })),
         ...reportData.operasional.map(o => ({
           tanggal: o.tanggal || o.tanggal_operasional,
           komoditas: getKomoditasName(o.komoditas_id),
           kategori: o.kategori,
-          nominal: o.nominal,
+          nominal: Number(o.nominal || 0),
           ket: o.keterangan || "-"
         }))
       ].sort((a, b) => new Date(a.tanggal || 0).getTime() - new Date(b.tanggal || 0).getTime());
+
+      const totalPengeluaran = rawOpsList.reduce((sum, item) => sum + item.nominal, 0);
 
       const opsRows = rawOpsList.map(item => [
         formatDate(item.tanggal),
@@ -362,34 +559,64 @@ export default function LaporanPage() {
         formatIDR(item.nominal)
       ]);
 
+      // Subtotal footer row
+      if (opsRows.length > 0) {
+        opsRows.push([
+          "",
+          "",
+          "",
+          "TOTAL PENGELUARAN",
+          formatIDR(totalPengeluaran)
+        ]);
+      }
+
       autoTable(doc, {
         head: opsHeaders,
         body: opsRows,
         startY: currentY + 3,
-        theme: "grid",
-        headStyles: { fillColor: [51, 65, 85], textColor: 255, fontSize: 7.5, fontStyle: "bold" },
-        bodyStyles: { fontSize: 7, textColor: 40 },
+        theme: "striped",
+        headStyles: { 
+          fillColor: [37, 99, 235], // Blue 600
+          textColor: 255, 
+          fontSize: 7.5, 
+          fontStyle: "bold",
+          cellPadding: 2.5 
+        },
+        bodyStyles: { fontSize: 7, textColor: 50, cellPadding: 2 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: {
+          lineColor: [226, 232, 240],
+          lineWidth: 0.2,
+        },
         columnStyles: {
           0: { halign: "center", cellWidth: 22 },
-          1: { cellWidth: 38 },
-          2: { cellWidth: 32 },
+          1: { cellWidth: 36 },
+          2: { cellWidth: 34 },
           3: { cellWidth: 55 },
-          4: { halign: "right", cellWidth: 35 },
+          4: { halign: "right", cellWidth: 35, fontStyle: "bold" },
         },
+        didParseCell: (data) => {
+          // Highlight total row at the bottom
+          if (data.row.index === opsRows.length - 1 && opsRows.length > 1) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fillColor = [241, 245, 249]; // Slate 100
+            data.cell.styles.textColor = [15, 23, 42];
+          }
+        }
       });
 
-      currentY = (doc as any).lastAutoTable.finalY + 9;
+      currentY = (doc as any).lastAutoTable.finalY + 10;
 
       // Section 3: Monitoring Pertumbuhan & Panen Raya
-      if (currentY > 240) {
+      if (currentY > 235) {
         doc.addPage();
         currentY = 20;
       }
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10.5);
+      doc.setFontSize(9.5);
       doc.setTextColor(15, 23, 42);
-      doc.text("3. HASIL SAMPLING PERTUMBUHAN & PANEN RAYA", 14, currentY);
+      doc.text("3. HASIL SAMPLING PERTUMBUHAN & HASIL PANEN RAYA", 14, currentY);
 
       const resultHeaders = [["Tanggal", "Komoditas", "Jenis Log", "Detail Biometrik / Panen", "Hasil Akhir / Pendapatan"]];
       const rawResultsList = [
@@ -428,31 +655,187 @@ export default function LaporanPage() {
         head: resultHeaders,
         body: resultRows,
         startY: currentY + 3,
-        theme: "grid",
-        headStyles: { fillColor: [16, 185, 129], textColor: 255, fontSize: 7.5, fontStyle: "bold" },
-        bodyStyles: { fontSize: 7, textColor: 40 },
+        theme: "striped",
+        headStyles: { 
+          fillColor: [16, 185, 129], // Emerald 600
+          textColor: 255, 
+          fontSize: 7.5, 
+          fontStyle: "bold",
+          cellPadding: 2.5 
+        },
+        bodyStyles: { fontSize: 7, textColor: 50, cellPadding: 2 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: {
+          lineColor: [226, 232, 240],
+          lineWidth: 0.2,
+        },
         columnStyles: {
           0: { halign: "center", cellWidth: 22 },
-          1: { cellWidth: 38 },
-          2: { cellWidth: 32 },
+          1: { cellWidth: 36 },
+          2: { cellWidth: 34 },
           3: { cellWidth: 50 },
-          4: { halign: "right", cellWidth: 40 },
+          4: { halign: "right", cellWidth: 40, fontStyle: "bold" },
         },
-        didDrawPage: (data) => {
-          // Footer page numbering
-          const pageCount = (doc as any).internal.getNumberOfPages();
-          doc.setFontSize(8);
-          doc.setTextColor(148, 163, 184); // Slate 400
-          doc.text(
-            `Halaman ${data.pageNumber} dari ${pageCount} - TambakKu Report Engine`,
-            105,
-            290,
-            { align: "center" }
-          );
+      });
+
+      // Section 4: Data Budidaya & Produksi Pokdakan (Format Resmi Kertas Kelompok Tani)
+      currentY = (doc as any).lastAutoTable.finalY + 10;
+      if (currentY > 220) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      const activeAnggotaNama = reportData.tambaks?.[0]?.nama_anggota || "KELOMPOK TANI / POKDAKAN";
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`4. DATA BUDIDAYA DAN PRODUKSI ${activeAnggotaNama.toUpperCase()}`, 14, currentY);
+
+      const pokdakanHeaders = [[
+        "No",
+        "Jenis Ikan / Komoditas",
+        "Asal Benih",
+        "Jumlah Tebar",
+        "SR (%)",
+        "Produksi 1 Siklus",
+        "Siklus Pemeliharaan",
+        "Ukuran Panen"
+      ]];
+
+      const filteredBenurs = reportData.benur || [];
+      const filteredPanens = reportData.panen || [];
+
+      // Deduplikasi komoditas berdasarkan nama agar setiap jenis komoditas hanya muncul 1x di Tabel 4
+      const validSiklusIds = new Set((reportData.siklus || []).map(s => s.siklus_id));
+      const rawKomoditas = (reportData.komoditas || []).filter(k => !k.siklus_id || validSiklusIds.has(k.siklus_id));
+      
+      const uniqueCommodityMap = new Map<string, any>();
+      rawKomoditas.forEach((k) => {
+        const key = (k.nama_komoditas || k.jenis_komoditas || "Udang Vaname").trim().toLowerCase();
+        if (!uniqueCommodityMap.has(key)) {
+          uniqueCommodityMap.set(key, k);
         }
       });
 
-      doc.save("Laporan_TambakKu.pdf");
+      let commoditiesToDisplay = Array.from(uniqueCommodityMap.values());
+      if (!commoditiesToDisplay || commoditiesToDisplay.length === 0) {
+        const types = Array.from(new Set(filteredBenurs.map(b => b.jenis_udang || "Udang Vaname")));
+        commoditiesToDisplay = (types.length > 0 ? types : ["Udang Vaname"]).map((t, idx) => ({
+          komoditas_id: `derived_${idx}`,
+          nama_komoditas: t,
+          jenis_komoditas: t,
+        }));
+      }
+
+      const pokdakanRows = commoditiesToDisplay.map((k, idx) => {
+        const kBenur = filteredBenurs.filter(b => 
+          (k.komoditas_id && !k.komoditas_id.startsWith("derived_") && b.komoditas_id ? b.komoditas_id === k.komoditas_id : true) ||
+          b.jenis_udang?.toLowerCase() === k.nama_komoditas?.toLowerCase()
+        );
+        const kPanen = filteredPanens.filter(p => 
+          (k.komoditas_id && !k.komoditas_id.startsWith("derived_") && p.komoditas_id ? p.komoditas_id === k.komoditas_id : true)
+        );
+
+        const targetBenurs = kBenur.length > 0 ? kBenur : filteredBenurs;
+        const totalBenurTebar = targetBenurs.reduce((sum, b) => sum + Number(b.jumlah_benur || 0), 0);
+        const asalBenihStr = targetBenurs.find(b => b.asal_benih && String(b.asal_benih).trim() !== "")?.asal_benih || "-";
+
+        const targetPanens = kPanen.length > 0 ? kPanen : filteredPanens;
+        const totalPanenKg = targetPanens.reduce((sum, p) => sum + Number(p.berat_panen || 0), 0);
+        
+        const totalUdangPanen = targetPanens.reduce((sum, p) => {
+          if (p.jumlah_ekor) return sum + Number(p.jumlah_ekor);
+          if (p.size && p.berat_panen) return sum + (Number(p.berat_panen) * Number(p.size));
+          return sum;
+        }, 0);
+
+        const isSeaweed = k.jenis_komoditas === "rumput_laut" || k.nama_komoditas?.toLowerCase().includes("rumput laut");
+
+        const avgSize = !isSeaweed && (targetPanens.find(p => p.size)?.size || (totalPanenKg > 0 && totalUdangPanen > 0 ? Math.round(totalUdangPanen / totalPanenKg) : "-"));
+
+        let srVal: number | undefined = undefined;
+        if (!isSeaweed && totalBenurTebar > 0 && totalUdangPanen > 0) {
+          srVal = (totalUdangPanen / totalBenurTebar) * 100;
+        } else if (!isSeaweed) {
+          const storedSR = targetPanens.find(p => p.sr_percent !== undefined && Number(p.sr_percent) > 0)?.sr_percent;
+          if (storedSR) srVal = Number(storedSR);
+        }
+
+        const srPercentStr = !isSeaweed && srVal !== undefined ? `${srVal.toFixed(1).replace(".", ",")}%` : "-";
+
+        return [
+          idx + 1,
+          k.nama_komoditas || k.jenis_komoditas || "Udang Vaname",
+          asalBenihStr,
+          totalBenurTebar > 0 ? `${formatNumber(totalBenurTebar)} ${isSeaweed ? "kg" : "ekor"}` : "-",
+          srPercentStr,
+          totalPanenKg > 0 ? `${formatNumber(totalPanenKg)} kg` : "-",
+          "2-3 kali/tahun",
+          avgSize && avgSize !== "-" ? `${avgSize} ekor/kg` : "-"
+        ];
+      });
+
+      if (pokdakanRows.length === 0) {
+        pokdakanRows.push([
+          1,
+          "Udang Vaname",
+          "-",
+          "-",
+          "-",
+          "-",
+          "2-3 kali/tahun",
+          "-"
+        ]);
+      }
+
+      autoTable(doc, {
+        head: pokdakanHeaders,
+        body: pokdakanRows,
+        startY: currentY + 3,
+        theme: "striped",
+        headStyles: { 
+          fillColor: [15, 23, 42], // Slate 900
+          textColor: 255, 
+          fontSize: 7.5, 
+          fontStyle: "bold",
+          halign: "center",
+          cellPadding: 2.5 
+        },
+        bodyStyles: { fontSize: 7, textColor: 50, cellPadding: 2.5 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: {
+          lineColor: [226, 232, 240],
+          lineWidth: 0.2,
+        },
+        columnStyles: {
+          0: { halign: "center", cellWidth: 8 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 26 },
+          3: { halign: "right", cellWidth: 26 },
+          4: { halign: "center", cellWidth: 16, fontStyle: "bold" },
+          5: { halign: "right", cellWidth: 24, fontStyle: "bold" },
+          6: { halign: "center", cellWidth: 26 },
+          7: { halign: "center", cellWidth: 26, fontStyle: "bold" },
+        },
+        didDrawPage: (data) => {
+          // Page Numbering Footer on every page
+          const totalPages = (doc as any).internal.getNumberOfPages();
+
+          // Footer Line
+          doc.setDrawColor(226, 232, 240);
+          doc.setLineWidth(0.3);
+          doc.line(14, 283, pageWidth - 14, 283);
+
+          doc.setFontSize(7.5);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(148, 163, 184); // Slate 400
+          doc.text("TambakKu Engine — Laporan Budidaya & Keuangan Digital", 14, 288);
+          doc.text(`Halaman ${data.pageNumber} dari ${totalPages}`, pageWidth - 14, 288, { align: "right" });
+        }
+      });
+
+      doc.save(`Laporan_TambakKu_${new Date().toISOString().slice(0, 10)}.pdf`);
       toast.success("Dokumen PDF berhasil diunduh!");
     } catch (err: any) {
       console.error("PDF Export Error:", err);
@@ -460,18 +843,27 @@ export default function LaporanPage() {
     }
   };
 
+  // Live preview helpers
+  const calculatedTotalModal = reportData ? (
+    reportData.benur.reduce((s, b) => s + Number(b.total_harga || 0), 0) +
+    reportData.operasional.reduce((s, o) => s + Number(o.nominal || 0), 0)
+  ) : 0;
+  const calculatedTotalRevenue = reportData ? reportData.panen.reduce((s, p) => s + Number(p.pendapatan || 0), 0) : 0;
+  const calculatedTotalLaba = calculatedTotalRevenue - calculatedTotalModal;
+  const calculatedTotalBeratPanen = reportData ? reportData.panen.reduce((s, p) => s + Number(p.berat_panen || 0), 0) : 0;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
       {/* Header Banner */}
       <div className="rounded-2xl bg-white border border-slate-200 p-5 text-slate-900 shadow-2xs">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
             <FileText className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Ekspor Laporan Budidaya</h3>
+            <h3 className="text-base font-bold text-slate-900">Ekspor & Cetak Laporan Budidaya</h3>
             <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
-              Pilih opsi kolam dan tanggal, lalu klik **"Proses Laporan"** untuk mengunduh file PDF atau Excel.
+              Pilih opsi kolam dan rentang tanggal, lalu klik <span className="font-semibold text-slate-800">"Proses Laporan"</span> untuk melihat pratinjau data dan mengunduh berkas PDF atau Excel.
             </p>
           </div>
         </div>
@@ -480,8 +872,9 @@ export default function LaporanPage() {
       {/* Filter Card */}
       <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
         <CardHeader className="pb-3 border-b border-slate-100">
-          <CardTitle className="text-base font-bold text-slate-900">
-            Filter Data Laporan
+          <CardTitle className="text-base font-bold text-slate-900 flex items-center justify-between">
+            <span>Filter Data Laporan</span>
+            <span className="text-xs font-normal text-slate-400">Pilih kriteria data</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
@@ -500,7 +893,7 @@ export default function LaporanPage() {
                     id="tambak"
                     value={selectedTambakId}
                     onChange={(e) => setSelectedTambakId(e.target.value)}
-                    className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full h-9.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
                   >
                     <option value="all">Semua Tambak</option>
                     {tambaks.map((t) => (
@@ -519,7 +912,7 @@ export default function LaporanPage() {
                     value={selectedSiklusId}
                     onChange={(e) => setSelectedSiklusId(e.target.value)}
                     disabled={selectedTambakId === "all"}
-                    className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50 disabled:text-slate-400"
+                    className="w-full h-9.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50 disabled:text-slate-400 transition-all"
                   >
                     <option value="all">Semua Siklus</option>
                     {filteredCycles.map((c) => (
@@ -538,7 +931,7 @@ export default function LaporanPage() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="rounded-xl border-slate-200 text-xs h-9"
+                    className="rounded-xl border-slate-200 text-xs h-9.5"
                   />
                 </div>
 
@@ -550,7 +943,7 @@ export default function LaporanPage() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="rounded-xl border-slate-200 text-xs h-9"
+                    className="rounded-xl border-slate-200 text-xs h-9.5"
                   />
                 </div>
               </div>
@@ -559,16 +952,16 @@ export default function LaporanPage() {
                 <Button 
                   onClick={handleGenerateReport} 
                   disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 font-bold text-xs rounded-xl shadow-xs px-5 h-9 text-white"
+                  className="bg-blue-600 hover:bg-blue-700 font-bold text-xs rounded-xl shadow-2xs px-5 h-10 text-white gap-2 transition-all cursor-pointer"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Memuat Data...
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Memuat Data Laporan...
                     </>
                   ) : (
                     <>
-                      <Search className="mr-1.5 h-4 w-4" /> Proses Laporan
+                      <Search className="h-4 w-4" /> Proses Laporan
                     </>
                   )}
                 </Button>
@@ -580,71 +973,312 @@ export default function LaporanPage() {
 
       {/* Preview & Download Card */}
       {reportData ? (
-        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white animate-in fade-in duration-300">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 gap-4">
-            <div>
-              <CardTitle className="text-base font-bold text-slate-900">Berkas Laporan Siap Diunduh</CardTitle>
-              <CardDescription className="text-xs text-slate-500 font-normal">Pilih format berkas yang Anda butuhkan (Excel atau PDF).</CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button 
-                onClick={handleExportExcel}
-                className="bg-emerald-600 hover:bg-emerald-700 font-bold text-xs rounded-xl shadow-xs h-9 px-4 text-white"
-              >
-                <Download className="mr-1.5 h-4 w-4" /> Unduh Excel (.xlsx)
-              </Button>
-              <Button 
-                onClick={handleExportPDF}
-                className="bg-red-600 hover:bg-red-700 font-bold text-xs rounded-xl shadow-xs h-9 px-4 text-white"
-              >
-                <Download className="mr-1.5 h-4 w-4" /> Unduh PDF (.pdf)
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-6">
-              {/* Summary stats */}
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-2xl border-2 border-slate-100 p-4 bg-slate-50/50">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Kolam Terpilih</span>
-                  <span className="text-base font-black text-slate-900 mt-1 block">
-                    {selectedTambakId === "all" ? `${reportData.tambaks.length} Kolam` : getTambakName(selectedTambakId)}
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Executive Download Bar */}
+          <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 gap-4">
+              <div>
+                <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span>Berkas Laporan Siap Diunduh</span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md uppercase">Siap</span>
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500 font-normal">Pilih format berkas yang Anda butuhkan (Excel atau PDF).</CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button 
+                  onClick={handleExportExcel}
+                  className="bg-emerald-600 hover:bg-emerald-700 font-bold text-xs rounded-xl shadow-2xs h-10 px-4 text-white gap-1.5 cursor-pointer transition-all"
+                >
+                  <Download className="h-4 w-4" /> Unduh Excel (.xlsx)
+                </Button>
+                <Button 
+                  onClick={handleExportPDF}
+                  className="bg-red-600 hover:bg-red-700 font-bold text-xs rounded-xl shadow-2xs h-10 px-4 text-white gap-1.5 cursor-pointer transition-all"
+                >
+                  <Download className="h-4 w-4" /> Unduh PDF (.pdf)
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-5">
+              {/* Stat Summary Cards */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-xl border border-slate-100 p-3.5 bg-slate-50/60">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Modal</span>
+                  <span className="text-sm font-black text-slate-900 mt-0.5 block">{formatIDR(calculatedTotalModal)}</span>
+                </div>
+                <div className="rounded-xl border border-emerald-100 p-3.5 bg-emerald-50/40">
+                  <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">Total Pendapatan</span>
+                  <span className="text-sm font-black text-emerald-800 mt-0.5 block">{formatIDR(calculatedTotalRevenue)}</span>
+                </div>
+                <div className={`rounded-xl border p-3.5 ${calculatedTotalLaba >= 0 ? "border-emerald-100 bg-emerald-50/40" : "border-red-100 bg-red-50/40"}`}>
+                  <span className={`text-[11px] font-bold uppercase tracking-wider block ${calculatedTotalLaba >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                    {calculatedTotalLaba >= 0 ? "Laba Bersih" : "Rugi Bersih"}
+                  </span>
+                  <span className={`text-sm font-black mt-0.5 block ${calculatedTotalLaba >= 0 ? "text-emerald-800" : "text-red-800"}`}>
+                    {formatIDR(calculatedTotalLaba)}
                   </span>
                 </div>
-                <div className="rounded-2xl border-2 border-slate-100 p-4 bg-slate-50/50">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Catatan Biaya</span>
-                  <span className="text-base font-black text-slate-900 mt-1 block">
-                    {reportData.benur.length + reportData.operasional.length} Catatan
-                  </span>
-                </div>
-                <div className="rounded-2xl border-2 border-slate-100 p-4 bg-slate-50/50">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Berat Panen</span>
-                  <span className="text-base font-black text-emerald-700 mt-1 block">
-                    {formatNumber(reportData.panen.reduce((s, i) => s + Number(i.berat_panen || 0), 0))} kg
-                  </span>
+                <div className="rounded-xl border border-blue-100 p-3.5 bg-blue-50/40">
+                  <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">Total Hasil Panen</span>
+                  <span className="text-sm font-black text-blue-900 mt-0.5 block">{formatNumber(calculatedTotalBeratPanen)} kg</span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Tips banner */}
-              <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/50 p-4 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          {/* Live Browser Report Preview Section */}
+          <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white overflow-hidden">
+            <CardHeader className="border-b border-slate-100 pb-3 bg-slate-50/40">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h4 className="text-xs font-extrabold text-blue-950">💡 Petunjuk Cetak Laporan</h4>
-                  <p className="text-xs text-blue-800 leading-relaxed font-medium mt-0.5">
-                    Gunakan berkas <strong>PDF</strong> apabila ingin mencetak fisik ke kertas (sebagai laporan ke pengurus KKN/Pemerintah Desa). Gunakan <strong>Excel</strong> jika ingin mengolah angka pembukuan di komputer.
-                  </p>
+                  <CardTitle className="text-sm font-bold text-slate-900">Pratinjau Data Laporan</CardTitle>
+                  <CardDescription className="text-xs text-slate-500 font-normal">Hasil olah data riil yang akan tercetak di PDF/Excel.</CardDescription>
+                </div>
+                {/* Preview Tabs */}
+                <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
+                  <button
+                    onClick={() => setActiveTab("pokdakan")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      activeTab === "pokdakan"
+                        ? "bg-white text-slate-900 shadow-2xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Data Budidaya Pokdakan
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("siklus")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      activeTab === "siklus"
+                        ? "bg-white text-slate-900 shadow-2xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Ringkasan Siklus
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("ops")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      activeTab === "ops"
+                        ? "bg-white text-slate-900 shadow-2xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    Detail Catatan Biaya & Panen
+                  </button>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="p-0">
+              {/* Tab 1: Data Budidaya Pokdakan (Tabel 4) */}
+              {activeTab === "pokdakan" && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-900 text-white font-semibold">
+                      <tr>
+                        <th className="px-4 py-3 text-center w-12">No</th>
+                        <th className="px-4 py-3">Jenis Ikan / Komoditas</th>
+                        <th className="px-4 py-3">Asal Benih</th>
+                        <th className="px-4 py-3 text-right">Jumlah Tebar</th>
+                        <th className="px-4 py-3 text-center">SR (%)</th>
+                        <th className="px-4 py-3 text-right">Produksi 1 Siklus</th>
+                        <th className="px-4 py-3 text-center">Siklus Pemeliharaan</th>
+                        <th className="px-4 py-3 text-center">Ukuran Panen</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {(() => {
+                        const validSiklusIds = new Set((reportData.siklus || []).map(s => s.siklus_id));
+                        const rawKomoditas = (reportData.komoditas || []).filter(k => !k.siklus_id || validSiklusIds.has(k.siklus_id));
+                        
+                        const uniqueMap = new Map<string, any>();
+                        rawKomoditas.forEach((k) => {
+                          const key = (k.nama_komoditas || k.jenis_komoditas || "Udang Vaname").trim().toLowerCase();
+                          if (!uniqueMap.has(key)) uniqueMap.set(key, k);
+                        });
+
+                        let list = Array.from(uniqueMap.values());
+                        if (list.length === 0) {
+                          const types = Array.from(new Set(reportData.benur.map(b => b.jenis_udang || "Udang Vaname")));
+                          list = (types.length > 0 ? types : ["Udang Vaname"]).map((t, idx) => ({
+                            komoditas_id: `derived_${idx}`,
+                            nama_komoditas: t,
+                            jenis_komoditas: t,
+                          }));
+                        }
+
+                        return list.map((k, idx) => {
+                          const kBenur = reportData.benur.filter(b => 
+                            (k.komoditas_id && !k.komoditas_id.startsWith("derived_") && b.komoditas_id ? b.komoditas_id === k.komoditas_id : true) ||
+                            b.jenis_udang?.toLowerCase() === k.nama_komoditas?.toLowerCase()
+                          );
+                          const kPanen = reportData.panen.filter(p => 
+                            (k.komoditas_id && !k.komoditas_id.startsWith("derived_") && p.komoditas_id ? p.komoditas_id === k.komoditas_id : true)
+                          );
+
+                          const targetBenurs = kBenur.length > 0 ? kBenur : reportData.benur;
+                          const totalBenurTebar = targetBenurs.reduce((sum, b) => sum + Number(b.jumlah_benur || 0), 0);
+                          const asalBenihStr = targetBenurs.find(b => b.asal_benih && String(b.asal_benih).trim() !== "")?.asal_benih || "-";
+
+                          const targetPanens = kPanen.length > 0 ? kPanen : reportData.panen;
+                          const totalPanenKg = targetPanens.reduce((sum, p) => sum + Number(p.berat_panen || 0), 0);
+                          
+                          const totalUdangPanen = targetPanens.reduce((sum, p) => {
+                            if (p.jumlah_ekor) return sum + Number(p.jumlah_ekor);
+                            if (p.size && p.berat_panen) return sum + (Number(p.berat_panen) * Number(p.size));
+                            return sum;
+                          }, 0);
+
+                          const isSeaweed = k.jenis_komoditas === "rumput_laut" || k.nama_komoditas?.toLowerCase().includes("rumput laut");
+                          const avgSize = !isSeaweed && (targetPanens.find(p => p.size)?.size || (totalPanenKg > 0 && totalUdangPanen > 0 ? Math.round(totalUdangPanen / totalPanenKg) : "-"));
+
+                          let srVal: number | undefined = undefined;
+                          if (!isSeaweed && totalBenurTebar > 0 && totalUdangPanen > 0) {
+                            srVal = (totalUdangPanen / totalBenurTebar) * 100;
+                          } else if (!isSeaweed) {
+                            const storedSR = targetPanens.find(p => p.sr_percent !== undefined && Number(p.sr_percent) > 0)?.sr_percent;
+                            if (storedSR) srVal = Number(storedSR);
+                          }
+                          const srPercentStr = !isSeaweed && srVal !== undefined ? `${srVal.toFixed(1).replace(".", ",")}%` : "-";
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="px-4 py-3 text-center font-bold text-slate-500">{idx + 1}</td>
+                              <td className="px-4 py-3 font-extrabold text-slate-900">
+                                {k.nama_komoditas || k.jenis_komoditas || "Udang Vaname"}
+                              </td>
+                              <td className="px-4 py-3 text-slate-600 capitalize">{asalBenihStr}</td>
+                              <td className="px-4 py-3 text-right font-medium">
+                                {totalBenurTebar > 0 ? `${formatNumber(totalBenurTebar)} ${isSeaweed ? "kg" : "ekor"}` : "-"}
+                              </td>
+                              <td className="px-4 py-3 text-center font-bold text-blue-600">{srPercentStr}</td>
+                              <td className="px-4 py-3 text-right font-black text-emerald-700">
+                                {totalPanenKg > 0 ? `${formatNumber(totalPanenKg)} kg` : "-"}
+                              </td>
+                              <td className="px-4 py-3 text-center text-slate-500">2-3 kali/tahun</td>
+                              <td className="px-4 py-3 text-center font-bold text-slate-700">
+                                {avgSize && avgSize !== "-" ? `${avgSize} ekor/kg` : "-"}
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Tab 2: Ringkasan Siklus */}
+              {activeTab === "siklus" && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-800 text-white font-semibold">
+                      <tr>
+                        <th className="px-4 py-3 text-center w-12">No</th>
+                        <th className="px-4 py-3">Kolam Tambak</th>
+                        <th className="px-4 py-3 text-center">Siklus</th>
+                        <th className="px-4 py-3">Daftar Komoditas</th>
+                        <th className="px-4 py-3 text-center">Mulai</th>
+                        <th className="px-4 py-3 text-center">Status</th>
+                        <th className="px-4 py-3 text-right">Total Modal</th>
+                        <th className="px-4 py-3 text-right">Pendapatan</th>
+                        <th className="px-4 py-3 text-right">Laba / Rugi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {reportData.siklus.map((s, idx) => {
+                        const benurCost = reportData.benur.filter(b => b.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
+                        const opsCost = reportData.operasional.filter(o => o.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.nominal || 0), 0);
+                        const modal = benurCost + opsCost;
+                        const revenue = reportData.panen.filter(p => p.siklus_id === s.siklus_id).reduce((sum, item) => sum + Number(item.pendapatan || 0), 0);
+                        const laba = revenue - modal;
+                        const sKomoditasNames = Array.from(new Set(reportData.komoditas.filter(k => k.siklus_id === s.siklus_id).map(k => k.nama_komoditas).filter(Boolean)));
+
+                        return (
+                          <tr key={s.siklus_id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-4 py-3 text-center font-bold text-slate-500">{idx + 1}</td>
+                            <td className="px-4 py-3 font-bold text-slate-900">{getTambakName(s.tambak_id)}</td>
+                            <td className="px-4 py-3 text-center font-bold text-blue-600">#{s.nomor_siklus}</td>
+                            <td className="px-4 py-3 font-medium text-slate-700">{sKomoditasNames.join(", ") || "Udang Vaname"}</td>
+                            <td className="px-4 py-3 text-center text-slate-500">{formatDate(s.tanggal_mulai)}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase ${
+                                s.status === "aktif" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                              }`}>
+                                {s.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium">{formatIDR(modal)}</td>
+                            <td className="px-4 py-3 text-right font-medium text-emerald-700">{formatIDR(revenue)}</td>
+                            <td className={`px-4 py-3 text-right font-black ${laba >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                              {formatIDR(laba)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Tab 3: Detail Catatan Biaya & Panen */}
+              {activeTab === "ops" && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-blue-600 text-white font-semibold">
+                      <tr>
+                        <th className="px-4 py-3 text-center">Tanggal</th>
+                        <th className="px-4 py-3">Komoditas</th>
+                        <th className="px-4 py-3">Kategori</th>
+                        <th className="px-4 py-3">Keterangan / Detail</th>
+                        <th className="px-4 py-3 text-right">Nominal (Rp)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {[
+                        ...reportData.benur.map(b => ({
+                          tanggal: b.tanggal_tebar || b.tanggal,
+                          komoditas: getKomoditasName(b.komoditas_id),
+                          kategori: "Penebaran Bibit",
+                          nominal: Number(b.total_harga || 0),
+                          ket: `Ukuran ${b.ukuran_PL || "-"} (${formatNumber(b.jumlah_benur)} unit)`
+                        })),
+                        ...reportData.operasional.map(o => ({
+                          tanggal: o.tanggal || o.tanggal_operasional,
+                          komoditas: getKomoditasName(o.komoditas_id),
+                          kategori: o.kategori,
+                          nominal: Number(o.nominal || 0),
+                          ket: o.keterangan || "-"
+                        }))
+                      ]
+                        .sort((a, b) => new Date(a.tanggal || 0).getTime() - new Date(b.tanggal || 0).getTime())
+                        .map((item, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-4 py-3 text-center text-slate-500 font-medium">{formatDate(item.tanggal)}</td>
+                            <td className="px-4 py-3 font-bold text-slate-800">{item.komoditas}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-700">
+                                {item.kategori}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">{item.ket}</td>
+                            <td className="px-4 py-3 text-right font-bold text-slate-900">{formatIDR(item.nominal)}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         /* Empty Preview State */
         <div className="rounded-3xl border-2 border-dashed border-slate-200 py-14 text-center bg-slate-50/40 px-4">
           <FileText className="h-12 w-12 text-blue-400 stroke-1 mx-auto mb-3" />
           <h3 className="text-base font-black text-slate-800">Klik "Proses Laporan" Di Atas</h3>
           <p className="text-xs text-slate-500 max-w-sm leading-relaxed mx-auto mt-1 font-medium">
-            Pilih kolam tambak Anda di atas, lalu tekan tombol biru <strong>"Proses Laporan"</strong> untuk mengunduh laporan PDF atau Excel.
+            Pilih kolam tambak Anda di atas, lalu tekan tombol biru <strong>"Proses Laporan"</strong> untuk melihat pratinjau data dan mengunduh berkas PDF atau Excel.
           </p>
         </div>
       )}

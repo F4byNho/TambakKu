@@ -17,7 +17,7 @@ export const endSiklusSchema = z.object({
     .string()
     .min(1, "Tanggal selesai wajib diisi")
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal tidak valid (YYYY-MM-DD)"),
-  status: z.enum(["aktif", "selesai"]),
+  status: z.enum(["aktif", "selesai"]).default("selesai"),
 });
 
 export type SiklusInput = z.infer<typeof siklusSchema>;

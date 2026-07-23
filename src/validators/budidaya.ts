@@ -7,6 +7,7 @@ export const benurSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal tidak valid (YYYY-MM-DD)"),
   jenis_udang: z.string().min(1, "Varietas/jenis komoditas wajib diisi"),
   ukuran_PL: z.string().min(1, "Ukuran/metode penanaman wajib diisi"),
+  asal_benih: z.string().min(1, "Asal benih/bibit wajib diisi"),
   jumlah_benur: z.coerce
     .number({ message: "Jumlah/berat harus berupa angka" })
     .positive("Jumlah/berat harus lebih dari 0"),
@@ -62,7 +63,14 @@ export const panenSchema = z.object({
   harga_jual: z.coerce
     .number({ message: "Harga jual per kg harus berupa angka" })
     .nonnegative("Harga jual tidak boleh negatif"),
+  size: z.coerce
+    .number({ message: "Size (ekor/kg) harus berupa angka" })
+    .optional()
+    .or(z.literal("")),
   komoditas_id: z.string().min(1, "Komoditas wajib dipilih"),
+  jumlah_ekor: z.coerce.number().optional(),
+  pendapatan: z.coerce.number().optional(),
+  sr_percent: z.coerce.number().optional(),
 });
 
 export type PanenInput = z.infer<typeof panenSchema>;

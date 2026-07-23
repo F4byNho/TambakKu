@@ -14,12 +14,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
+import { formatIDR, formatNumber, formatDate, formatDateForInput } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { operasionalSchema, type OperasionalInput } from "@/validators/budidaya";
 import { getCommodityConfig } from "@/lib/commodity-config";
@@ -206,8 +206,9 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
     setSelectedLog(log);
     const isTK = isTKCategory(log.kategori);
     setJenisBiayaEdit(isTK ? "tenaga_kerja" : "operasional");
+    const rawDate = log.tanggal || (log as any).tanggal_operasional;
     resetEdit({
-      tanggal: log.tanggal,
+      tanggal: formatDateForInput(rawDate),
       kategori: log.kategori as any,
       nominal: log.nominal,
       keterangan: log.keterangan,
@@ -227,42 +228,55 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-base font-bold text-slate-900">
-            Biaya Pengeluaran {jenisKomoditas ? `Operasional ${getCommodityConfig(jenisKomoditas).name}` : "Siklus"}
+            Biaya Pengeluaran {jenisKomoditas ? getCommodityConfig(jenisKomoditas).name : "Siklus Tambak"}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Catatan pengeluaran operasional (seperti pakan, solar, probiotik) untuk {jenisKomoditas ? getCommodityConfig(jenisKomoditas).name.toLowerCase() : "kolam ini"}.
+            {jenisKomoditas 
+              ? `Catatan pengeluaran operasional & upah kerja khusus untuk komoditas ${getCommodityConfig(jenisKomoditas).name.toLowerCase()} (seperti pakan, pupuk, jasa panen).`
+              : "Catatan pengeluaran operasional & pemeliharaan umum 1 tambak (seperti keduk teplok, solar, genset, listrik) yang digunakan bersama."
+            }
           </p>
         </div>
         {isCycleActive && (
           <Button
             onClick={() => setIsAddOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-xs h-11 px-5 text-xs sm:text-sm text-white shrink-0 w-full sm:w-auto"
+            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-2xs h-10 px-4 text-xs text-white shrink-0 w-full sm:w-auto gap-1.5"
           >
-            <Plus className="mr-1.5 h-4 w-4" /> Tambah Pengeluaran
+            <Plus className="h-4 w-4" /> Tambah Pengeluaran
           </Button>
         )}
       </div>
 
       {/* Rangkuman total biaya operasional */}
-      <Card className="border-blue-100 bg-blue-50/20 shadow-none">
+      <Card className="border-blue-100 bg-blue-50/20 shadow-none rounded-xl">
         <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 shadow-sm shrink-0">
               <Calculator className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Biaya Operasional</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{formatIDR(totalCost)}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Biaya Pengeluaran</p>
+              {isLoading ? (
+                <div className="flex items-center gap-2 mt-1 h-7">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600 shrink-0" />
+                  <span className="text-xs font-semibold text-slate-400">Memuat total...</span>
+                </div>
+              ) : (
+                <p className="text-xl font-black text-slate-900 mt-0.5">{formatIDR(totalCost)}</p>
+              )}
             </div>
           </div>
           <div className="text-xs text-slate-400">
-            *Biaya gabungan seluruh pengeluaran operasional di luar bibit/benur.
+            {jenisKomoditas 
+              ? `*Pengeluaran khusus komoditas ${getCommodityConfig(jenisKomoditas).name.toLowerCase()} di luar pembelian bibit/benur.`
+              : "*Gabungan pengeluaran operasional & pemeliharaan umum 1 tambak di luar bibit/benur."
+            }
           </div>
         </CardContent>
       </Card>
 
-      {/* Main Table */}
-      <Card className="border-slate-100 shadow-sm">
+      {/* Card Grid */}
+      <Card className="border-slate-100 shadow-none rounded-xl">
         {isLoading ? (
           <div className="flex h-48 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
@@ -271,58 +285,59 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
             </div>
           </div>
         ) : logs.length > 0 ? (
-          <div className="p-4 sm:p-6">
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow className="border-b border-slate-100">
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Tanggal</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">Jenis/Kategori</TableHead>
-                    <TableHead className="w-[150px] text-center font-bold text-slate-700">Nominal</TableHead>
-                    <TableHead className="font-bold text-slate-700 pl-4">Keterangan</TableHead>
-                    {isCycleActive && <TableHead className="w-[120px] text-center font-bold text-slate-700">Aksi</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map((log) => (
-                    <TableRow key={log.operasional_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="text-center font-medium text-slate-600">{formatDate(log.tanggal || (log as any).tanggal_operasional)}</TableCell>
-                      <TableCell className="text-center">
-                        <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700 border border-slate-150/10">
-                          {log.kategori}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center font-bold text-slate-900">{formatIDR(log.nominal)}</TableCell>
-                      <TableCell className="text-slate-500 text-xs max-w-[250px] truncate pl-4">
-                        {log.keterangan || "-"}
-                      </TableCell>
-                      {isCycleActive && (
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(log)}
-                              className="h-8.5 w-8.5 text-amber-600 hover:bg-amber-50 rounded-lg"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openDeleteDialog(log)}
-                              className="h-8.5 w-8.5 text-red-600 hover:bg-red-50 rounded-lg"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {logs.map((log) => (
+              <Card
+                key={log.operasional_id}
+                className="transition-all shadow-2xs hover:shadow-md rounded-2xl p-4 flex flex-col justify-between bg-white border border-slate-200 hover:border-blue-300"
+              >
+                <div className="space-y-3">
+                  {/* Header: Tanggal & Actions */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(log.tanggal || (log as any).tanggal_operasional)}
+                    </span>
+                    {isCycleActive && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(log)}
+                          className="h-7 w-7 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDeleteDialog(log)}
+                          className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Kategori & Keterangan */}
+                  <div>
+                    <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700 border border-slate-150/10">
+                      {log.kategori}
+                    </span>
+                    {log.keterangan && (
+                      <p className="text-[11px] text-slate-400 italic mt-1.5 truncate">{log.keterangan}</p>
+                    )}
+                  </div>
+
+                  {/* Nominal */}
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50/60 border border-blue-100/80">
+                    <span className="text-xs text-slate-500 font-semibold">Nominal:</span>
+                    <span className="font-black text-slate-900 text-xs">{formatIDR(log.nominal)}</span>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
         ) : (
           /* Empty State */
@@ -330,9 +345,12 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
               <Calculator className="h-6 w-6" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Biaya Operasional</h4>
+            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Biaya Pengeluaran</h4>
             <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-              Pengeluaran operasional belum dicatat untuk {jenisKomoditas ? getCommodityConfig(jenisKomoditas).name.toLowerCase() : "siklus kolam ini"}.
+              {jenisKomoditas
+                ? `Biaya pengeluaran khusus ${getCommodityConfig(jenisKomoditas).name.toLowerCase()} belum dicatat.`
+                : "Biaya pengeluaran operasional & pemeliharaan umum 1 tambak belum dicatat pada siklus ini."
+              }
             </p>
           </div>
         )}

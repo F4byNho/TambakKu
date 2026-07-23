@@ -14,12 +14,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
+import { formatIDR, formatNumber, formatDate, formatDateForInput } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { benurSchema, type BenurInput } from "@/validators/budidaya";
 import { getCommodityConfig } from "@/lib/commodity-config";
@@ -31,6 +31,7 @@ interface BenurItem {
   tanggal_tebar: string;
   jenis_udang: string;
   ukuran_PL: string;
+  asal_benih?: string;
   jumlah_benur: number;
   harga_per_ekor: number;
   total_harga: number;
@@ -72,7 +73,8 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
     defaultValues: {
       tanggal_tebar: new Date().toISOString().split("T")[0],
       jenis_udang: defaultVarietas,
-      ukuran_PL: jenisKomoditas === "udang" ? "PL-10" : jenisKomoditas === "rumput_laut" ? "Longline" : "2-3 cm",
+      ukuran_PL: "",
+      asal_benih: "",
       jumlah_benur: "" as any,
       harga_per_ekor: "" as any,
       komoditas_id: komoditasId,
@@ -103,7 +105,8 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
     resetAdd({
       tanggal_tebar: new Date().toISOString().split("T")[0],
       jenis_udang: defaultVarietas,
-      ukuran_PL: jenisKomoditas === "udang" ? "PL-10" : jenisKomoditas === "rumput_laut" ? "Longline" : "2-3 cm",
+      ukuran_PL: "",
+      asal_benih: "",
       jumlah_benur: "" as any,
       harga_per_ekor: "" as any,
       komoditas_id: komoditasId,
@@ -141,7 +144,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
       resetAdd({
         tanggal_tebar: new Date().toISOString().split("T")[0],
         jenis_udang: defaultVarietas,
-        ukuran_PL: jenisKomoditas === "udang" ? "PL-10" : jenisKomoditas === "rumput_laut" ? "Longline" : "2-3 cm",
+        ukuran_PL: "",
         jumlah_benur: "" as any,
         harga_per_ekor: "" as any,
         komoditas_id: komoditasId,
@@ -205,10 +208,12 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
 
   const openEditDialog = (log: BenurItem) => {
     setSelectedLog(log);
+    const rawDate = log.tanggal_tebar || (log as any).tanggal;
     resetEdit({
-      tanggal_tebar: log.tanggal_tebar,
+      tanggal_tebar: formatDateForInput(rawDate),
       jenis_udang: log.jenis_udang,
       ukuran_PL: log.ukuran_PL,
+      asal_benih: log.asal_benih || "",
       jumlah_benur: log.jumlah_benur,
       harga_per_ekor: log.harga_per_ekor,
       komoditas_id: komoditasId,
@@ -224,9 +229,9 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-50/80 p-4.5 rounded-3xl border-2 border-slate-150">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-base font-black text-slate-900">
+          <h3 className="text-base font-bold text-slate-900">
             Riwayat {config.stockingLabel}
           </h3>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
@@ -236,87 +241,101 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
         {isCycleActive && (
           <Button
             onClick={() => setIsAddOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-xs h-11 px-5 text-xs sm:text-sm text-white shrink-0 w-full sm:w-auto"
+            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-2xs h-10 px-4 text-xs text-white shrink-0 w-full sm:w-auto gap-1.5"
           >
-            <Plus className="mr-1.5 h-4 w-4" /> Catat {config.stockingLabel}
+            <Plus className="h-4 w-4" /> Catat {config.stockingLabel}
           </Button>
         )}
       </div>
 
-      {/* Main Table */}
-      <Card className="border-2 border-slate-100 shadow-2xs rounded-3xl overflow-hidden">
-        {isLoading ? (
-          <div className="flex h-48 items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-bold">Memuat riwayat penebaran bibit...</p>
-            </div>
+      {/* Card Grid */}
+      {isLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+            <p className="text-xs text-slate-500 font-bold">Memuat riwayat penebaran bibit...</p>
           </div>
-        ) : logs.length > 0 ? (
-          <div className="p-4 sm:p-6">
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <Table>
-                <TableHeader className="bg-slate-100/70">
-                  <TableRow className="border-b border-slate-200">
-                    <TableHead className="w-[140px] text-center font-extrabold text-slate-900 text-xs uppercase">{config.stockingDateLabel}</TableHead>
-                    <TableHead className="font-extrabold text-slate-900 text-xs uppercase">{config.stockingNameLabel}</TableHead>
-                    <TableHead className="w-[120px] text-center font-extrabold text-slate-900 text-xs uppercase">{config.stockingSizeLabel}</TableHead>
-                    <TableHead className="w-[140px] text-center font-extrabold text-slate-900 text-xs uppercase">{config.stockingQtyLabel}</TableHead>
-                    <TableHead className="w-[140px] text-center font-extrabold text-slate-900 text-xs uppercase">{config.stockingPriceLabel}</TableHead>
-                    <TableHead className="w-[160px] text-center font-extrabold text-slate-900 text-xs uppercase">Total Biaya</TableHead>
-                    {isCycleActive && <TableHead className="w-[160px] text-center font-extrabold text-slate-900 text-xs uppercase">Tindakan</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map((log) => (
-                    <TableRow key={log.benur_id} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                      <TableCell className="text-center font-bold text-slate-700 text-xs">{formatDate(log.tanggal_tebar || (log as any).tanggal)}</TableCell>
-                      <TableCell className="font-black text-slate-900 text-xs">{log.jenis_udang}</TableCell>
-                      <TableCell className="text-center font-bold text-slate-600 text-xs">{log.ukuran_PL}</TableCell>
-                      <TableCell className="text-center font-black text-blue-700 text-xs">{formatNumber(log.jumlah_benur)} {config.stockingQtyUnit}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-600 text-xs">{formatIDR(log.harga_per_ekor)}</TableCell>
-                      <TableCell className="text-center font-black text-slate-900 text-xs">{formatIDR(log.total_harga)}</TableCell>
-                      {isCycleActive && (
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEditDialog(log)}
-                              className="h-8 border-amber-300 text-amber-800 hover:bg-amber-50 font-bold text-[11px] rounded-xl px-2.5"
-                            >
-                              <Edit className="mr-1 h-3.5 w-3.5 text-amber-600" /> Ubah
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDeleteDialog(log)}
-                              className="h-8 border-red-200 text-red-700 hover:bg-red-50 font-bold text-[11px] rounded-xl px-2.5"
-                            >
-                              <Trash2 className="mr-1 h-3.5 w-3.5 text-red-500" /> Hapus
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+        </div>
+      ) : logs.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {logs.map((log) => (
+            <Card
+              key={log.benur_id}
+              className="transition-all shadow-2xs hover:shadow-md rounded-2xl p-4 flex flex-col justify-between bg-white border border-slate-200 hover:border-blue-300"
+            >
+              <div className="space-y-3">
+                {/* Header: Tanggal & Actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                    <Calendar className="h-3 w-3" />
+                    {formatDate(log.tanggal_tebar || (log as any).tanggal)}
+                  </span>
+                  {isCycleActive && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(log)}
+                        className="h-7 w-7 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openDeleteDialog(log)}
+                        className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Varietas, Ukuran & Asal Benih */}
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 capitalize">{log.jenis_udang}</h4>
+                  <div className="mt-1 space-y-0.5">
+                    <p className="text-xs text-slate-500 font-medium">
+                      Ukuran: <span className="font-bold text-slate-700">{log.ukuran_PL}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Asal Benih: <span className="font-bold text-slate-800">{log.asal_benih || "-"}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Metrics */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50/60 border border-blue-100/80">
+                    <span className="text-xs text-slate-500 font-semibold">{config.stockingQtyLabel}:</span>
+                    <span className="font-black text-blue-700 text-xs">{formatNumber(log.jumlah_benur)} {config.stockingQtyUnit}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-100/80">
+                    <span className="text-xs text-slate-500 font-semibold">{config.stockingPriceLabel}:</span>
+                    <span className="font-bold text-slate-700 text-xs">{formatIDR(log.harga_per_ekor)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-100/80">
+                    <span className="text-xs text-slate-600 font-bold">Total Biaya:</span>
+                    <span className="font-black text-slate-900 text-xs">{formatIDR(log.total_harga)}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
+            <Layers className="h-6 w-6" />
           </div>
-        ) : (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
-              <Layers className="h-6 w-6" />
-            </div>
-            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada {config.stockingLabel}</h4>
-            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-              Pencatatan {config.stockingLabel.toLowerCase()} pada siklus ini belum dicatat. Silakan lakukan pencatatan tebar/tanam baru.
-            </p>
-          </div>
-        )}
-      </Card>
+          <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada {config.stockingLabel}</h4>
+          <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+            Pencatatan {config.stockingLabel.toLowerCase()} pada siklus ini belum dicatat. Silakan lakukan pencatatan tebar/tanam baru.
+          </p>
+        </div>
+      )}
 
       {/* dialogs */}
 
@@ -372,6 +391,20 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
                   <p className="text-xs text-red-500">{addErrors.ukuran_PL.message}</p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="asal_benih">Asal Benih / Bibit</Label>
+              <Input
+                id="asal_benih"
+                placeholder="misal: Hatchery Situbondo / PT STP"
+                disabled={isSubmitting}
+                {...registerAdd("asal_benih")}
+                className={addErrors.asal_benih ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {addErrors.asal_benih && (
+                <p className="text-xs text-red-500">{addErrors.asal_benih.message}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -498,6 +531,20 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
                   <p className="text-xs text-red-500">{editErrors.ukuran_PL.message}</p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit_asal_benih">Asal Benih / Bibit</Label>
+              <Input
+                id="edit_asal_benih"
+                placeholder="misal: Hatchery Situbondo / PT STP"
+                disabled={isSubmitting}
+                {...registerEdit("asal_benih")}
+                className={editErrors.asal_benih ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {editErrors.asal_benih && (
+                <p className="text-xs text-red-500">{editErrors.asal_benih.message}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

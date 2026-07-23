@@ -14,12 +14,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatIDR, formatNumber, formatDate } from "@/lib/utils";
+import { formatIDR, formatNumber, formatDate, formatDateForInput } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { panenSchema, type PanenInput } from "@/validators/budidaya";
 import { getCommodityConfig } from "@/lib/commodity-config";
@@ -32,6 +32,9 @@ interface PanenItem {
   berat_panen: number;
   harga_jual: number;
   pendapatan: number;
+  size?: number;
+  jumlah_ekor?: number;
+  sr_percent?: number;
 }
 
 interface CyclePanenProps {
@@ -44,6 +47,7 @@ interface CyclePanenProps {
 
 export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenisKomoditas, onDataChange }: CyclePanenProps) {
   const [logs, setLogs] = useState<PanenItem[]>([]);
+  const [totalBenurTebar, setTotalBenurTebar] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedLog, setSelectedLog] = useState<PanenItem | null>(null);
@@ -67,6 +71,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
     defaultValues: {
       tanggal: new Date().toISOString().split("T")[0],
       berat_panen: "" as any,
+      size: "" as any,
       harga_jual: "" as any,
       komoditas_id: komoditasId,
     },
@@ -82,18 +87,41 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
     resolver: zodResolver(panenSchema) as any,
   });
 
-  // Watch values for real-time calculations preview
+  // Watch values for real-time calculations preview (Add)
   const addQty = useWatch({ control: controlAdd, name: "berat_panen" }) || 0;
+  const addSize = useWatch({ control: controlAdd, name: "size" }) || 0;
   const addPrice = useWatch({ control: controlAdd, name: "harga_jual" }) || 0;
-  const previewRevenueAdd = Number(addQty) * Number(addPrice);
 
+  const addJumlahUdangPanen = (Number(addQty) || 0) * (Number(addSize) || 0);
+  const addSR = totalBenurTebar > 0 ? (addJumlahUdangPanen / totalBenurTebar) * 100 : 0;
+  const previewRevenueAdd = (Number(addQty) || 0) * (Number(addPrice) || 0);
+
+  // Watch values for real-time calculations preview (Edit)
   const editQty = useWatch({ control: controlEdit, name: "berat_panen" }) || 0;
+  const editSize = useWatch({ control: controlEdit, name: "size" }) || 0;
   const editPrice = useWatch({ control: controlEdit, name: "harga_jual" }) || 0;
-  const previewRevenueEdit = Number(editQty) * Number(editPrice);
+
+  const editJumlahUdangPanen = (Number(editQty) || 0) * (Number(editSize) || 0);
+  const editSR = totalBenurTebar > 0 ? (editJumlahUdangPanen / totalBenurTebar) * 100 : 0;
+  const previewRevenueEdit = (Number(editQty) || 0) * (Number(editPrice) || 0);
 
   useEffect(() => {
     fetchPanenLogs();
+    fetchBenurLogs();
   }, [siklusId, komoditasId]);
+
+  const fetchBenurLogs = async () => {
+    try {
+      const res = await fetch(`/api/benur?siklusId=${siklusId}&komoditasId=${komoditasId}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const benurs: any[] = json.data || [];
+      const sumBenur = benurs.reduce((acc, b) => acc + Number(b.jumlah_benur || 0), 0);
+      setTotalBenurTebar(sumBenur);
+    } catch (err) {
+      console.error("Gagal mengambil data benur tebar:", err);
+    }
+  };
 
   const fetchPanenLogs = async () => {
     setIsLoading(true);
@@ -115,11 +143,22 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
 
   const onAddSubmit = async (data: PanenInput) => {
     setIsSubmitting(true);
+    const calculatedJumlahEkor = (Number(data.berat_panen) || 0) * (Number(data.size) || 0);
+    const calculatedSR = totalBenurTebar > 0 ? (calculatedJumlahEkor / totalBenurTebar) * 100 : 0;
+    const calculatedPendapatan = (Number(data.berat_panen) || 0) * (Number(data.harga_jual) || 0);
+
     try {
       const res = await fetch("/api/panen", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siklusId, ...data, komoditas_id: komoditasId }),
+        body: JSON.stringify({ 
+          siklusId, 
+          ...data, 
+          komoditas_id: komoditasId,
+          jumlah_ekor: calculatedJumlahEkor,
+          pendapatan: calculatedPendapatan,
+          sr_percent: Number(calculatedSR.toFixed(2)),
+        }),
       });
 
       const result = await res.json();
@@ -130,6 +169,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
       resetAdd({
         tanggal: new Date().toISOString().split("T")[0],
         berat_panen: "" as any,
+        size: "" as any,
         harga_jual: "" as any,
         komoditas_id: komoditasId,
       });
@@ -145,11 +185,21 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
   const onEditSubmit = async (data: PanenInput) => {
     if (!selectedLog) return;
     setIsSubmitting(true);
+    const calculatedJumlahEkor = (Number(data.berat_panen) || 0) * (Number(data.size) || 0);
+    const calculatedSR = totalBenurTebar > 0 ? (calculatedJumlahEkor / totalBenurTebar) * 100 : 0;
+    const calculatedPendapatan = (Number(data.berat_panen) || 0) * (Number(data.harga_jual) || 0);
+
     try {
       const res = await fetch(`/api/panen/${selectedLog.panen_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, komoditas_id: komoditasId }),
+        body: JSON.stringify({ 
+          ...data, 
+          komoditas_id: komoditasId,
+          jumlah_ekor: calculatedJumlahEkor,
+          pendapatan: calculatedPendapatan,
+          sr_percent: Number(calculatedSR.toFixed(2)),
+        }),
       });
 
       const result = await res.json();
@@ -192,9 +242,11 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
 
   const openEditDialog = (log: PanenItem) => {
     setSelectedLog(log);
+    const rawDate = (log as any).tanggal_panen || log.tanggal;
     resetEdit({
-      tanggal: log.tanggal,
+      tanggal: formatDateForInput(rawDate),
       berat_panen: log.berat_panen,
+      size: log.size || ("" as any),
       harga_jual: log.harga_jual,
       komoditas_id: komoditasId,
     });
@@ -221,112 +273,122 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
         {isCycleActive && (
           <Button
             onClick={() => setIsAddOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-xs h-11 px-5 text-xs sm:text-sm text-white shrink-0 w-full sm:w-auto"
+            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-2xs h-10 px-4 text-xs text-white shrink-0 w-full sm:w-auto gap-1.5"
           >
-            <Plus className="mr-1.5 h-4 w-4" /> Catat Hasil Panen
+            <Plus className="h-4 w-4" /> Catat Hasil Panen
           </Button>
         )}
       </div>
 
-      {/* Rangkuman total panen */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="border-blue-100 bg-blue-50/20 shadow-none">
-          <CardContent className="p-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 shadow-sm shrink-0">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Hasil Panen</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{formatNumber(totalWeight)} kg</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-green-100 bg-green-50/20 shadow-none">
-          <CardContent className="p-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-100 text-green-600 shadow-sm shrink-0">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Pendapatan Panen</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{formatIDR(totalRevenue)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Table */}
-      <Card className="border-slate-100 shadow-sm">
-        {isLoading ? (
-          <div className="flex h-48 items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-semibold">Memuat riwayat panen...</p>
-            </div>
+      {/* Card Grid */}
+      {isLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <p className="text-xs text-slate-500 font-semibold">Memuat riwayat panen...</p>
           </div>
-        ) : logs.length > 0 ? (
-          <div className="p-4 sm:p-6">
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow className="border-b border-slate-100">
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Tanggal Panen</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">{config.harvestWeightLabel}</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">{config.harvestPriceLabel}</TableHead>
-                    <TableHead className="w-[180px] text-center font-bold text-slate-700">Total Pendapatan</TableHead>
-                    {isCycleActive && <TableHead className="w-[120px] text-center font-bold text-slate-700">Aksi</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map((log) => (
-                    <TableRow key={log.panen_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="text-center font-medium text-slate-600">{formatDate((log as any).tanggal_panen || log.tanggal)}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-800">{formatNumber(log.berat_panen)} kg</TableCell>
-                      <TableCell className="text-center font-medium text-slate-500">{formatIDR(log.harga_jual)} / kg</TableCell>
-                      <TableCell className="text-center font-bold text-green-600">{formatIDR(log.pendapatan)}</TableCell>
-                      {isCycleActive && (
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(log)}
-                              className="h-8.5 w-8.5 text-amber-600 hover:bg-amber-50 rounded-lg"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openDeleteDialog(log)}
-                              className="h-8.5 w-8.5 text-red-600 hover:bg-red-50 rounded-lg"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        ) : (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-            <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Panen</h4>
-            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-              Pencatatan hasil panen {config.name.toLowerCase()} belum dilakukan. Silakan catat panen yang telah dicapai.
-            </p>
-          </div>
-        )}
-      </Card>
+        </div>
+      ) : logs.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {logs.map((log) => {
+            const calculatedUdang = log.jumlah_ekor || (log.size ? log.berat_panen * log.size : undefined);
+            const calculatedSR = log.sr_percent !== undefined 
+              ? log.sr_percent 
+              : (totalBenurTebar > 0 && calculatedUdang ? (calculatedUdang / totalBenurTebar) * 100 : undefined);
 
-      {/* dialogs */}
+            return (
+              <Card
+                key={log.panen_id}
+                className="transition-all shadow-2xs hover:shadow-md rounded-2xl p-4 flex flex-col justify-between bg-white border border-slate-200 hover:border-emerald-300"
+              >
+                <div className="space-y-3">
+                  {/* Header: Tanggal & Actions */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate((log as any).tanggal_panen || log.tanggal)}
+                    </span>
+                    {isCycleActive && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(log)}
+                          className="h-7 w-7 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDeleteDialog(log)}
+                          className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50/60 border border-emerald-100/80">
+                      <span className="text-xs text-slate-500 font-semibold">{config.harvestWeightLabel}:</span>
+                      <span className="font-black text-emerald-700 text-xs">{formatNumber(log.berat_panen)} kg</span>
+                    </div>
+
+                    {jenisKomoditas !== "rumput_laut" && log.size ? (
+                      <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-100/80">
+                        <span className="text-xs text-slate-500 font-semibold">Size:</span>
+                        <span className="font-bold text-slate-800 text-xs font-mono">{log.size} ekor/kg</span>
+                      </div>
+                    ) : null}
+
+                    {jenisKomoditas !== "rumput_laut" && calculatedUdang ? (
+                      <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-100/80">
+                        <span className="text-xs text-slate-500 font-semibold">Est. Jumlah Udang:</span>
+                        <span className="font-bold text-slate-800 text-xs font-mono">{formatNumber(calculatedUdang)} ekor</span>
+                      </div>
+                    ) : null}
+
+                    {jenisKomoditas !== "rumput_laut" && (jenisKomoditas === "udang" || calculatedSR !== undefined) && (
+                      <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50/70 border border-blue-100">
+                        <span className="text-xs text-blue-700 font-bold">Survival Rate (SR %):</span>
+                        <span className="font-black text-blue-800 text-xs font-mono">
+                          {calculatedSR !== undefined 
+                            ? `${Number(calculatedSR).toFixed(2).replace(".", ",")}%`
+                            : "-"}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-100/80">
+                      <span className="text-xs text-slate-500 font-semibold">{config.harvestPriceLabel}:</span>
+                      <span className="font-bold text-slate-700 text-xs">{formatIDR(log.harga_jual)} / kg</span>
+                    </div>
+
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100">
+                      <span className="text-xs text-slate-600 font-bold">Total Pendapatan:</span>
+                      <span className="font-black text-emerald-700 text-xs">{formatIDR(log.pendapatan)}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-inner">
+            <TrendingUp className="h-6 w-6" />
+          </div>
+          <h4 className="text-sm font-bold text-slate-900 mb-0.5">Belum Ada Catatan Panen</h4>
+          <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+            Pencatatan hasil panen {config.name.toLowerCase()} belum dilakukan. Silakan catat panen yang telah dicapai.
+          </p>
+        </div>
+      )}
 
       {/* 1. Add Log Dialog */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -352,7 +414,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className={jenisKomoditas !== "rumput_laut" ? "grid grid-cols-2 gap-3" : "space-y-2"}>
               <div className="space-y-2">
                 <Label htmlFor="berat_panen">{config.harvestWeightLabel}</Label>
                 <Input
@@ -368,30 +430,69 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="harga_jual">{config.harvestPriceLabel}</Label>
-                <Input
-                  id="harga_jual"
-                  type="number"
-                  placeholder="85000"
-                  disabled={isSubmitting}
-                  {...registerAdd("harga_jual", { valueAsNumber: true })}
-                  className={addErrors.harga_jual ? "border-red-500 focus-visible:ring-red-500" : ""}
-                />
-                {addErrors.harga_jual && (
-                  <p className="text-xs text-red-500">{addErrors.harga_jual.message}</p>
-                )}
-              </div>
+              {jenisKomoditas !== "rumput_laut" && (
+                <div className="space-y-2">
+                  <Label htmlFor="size">Size (ekor/kg)</Label>
+                  <Input
+                    id="size"
+                    type="number"
+                    placeholder="100"
+                    disabled={isSubmitting}
+                    {...registerAdd("size", { valueAsNumber: true })}
+                    className={addErrors.size ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {addErrors.size && (
+                    <p className="text-xs text-red-500">{addErrors.size.message}</p>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Live Preview Card */}
-            <div className="rounded-xl border border-blue-50 bg-blue-50/30 p-3.5 flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-blue-800 font-bold">
-                <AlertCircle className="h-4.5 w-4.5" />
-                Estimasi Pendapatan:
-              </div>
-              <div className="text-blue-900 font-black text-base">
-                {formatIDR(previewRevenueAdd)}
+            <div className="space-y-2">
+              <Label htmlFor="harga_jual">{config.harvestPriceLabel}</Label>
+              <Input
+                id="harga_jual"
+                type="number"
+                placeholder="85000"
+                disabled={isSubmitting}
+                {...registerAdd("harga_jual", { valueAsNumber: true })}
+                className={addErrors.harga_jual ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {addErrors.harga_jual && (
+                <p className="text-xs text-red-500">{addErrors.harga_jual.message}</p>
+              )}
+            </div>
+
+            {/* Realtime Automatic Indicators Box */}
+            <div className="space-y-2 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+              {jenisKomoditas !== "rumput_laut" && (
+                <>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-600">Estimasi Jumlah Udang Panen:</span>
+                    <span className="font-black text-slate-900 font-mono">
+                      {addJumlahUdangPanen > 0 ? `${formatNumber(addJumlahUdangPanen)} ekor` : "0 ekor"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-600">Survival Rate (SR):</span>
+                    <span className={`font-black font-mono px-2 py-0.5 rounded-md text-xs ${addSR >= 70 ? "bg-emerald-100 text-emerald-800" : addSR > 0 ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+                      {totalBenurTebar > 0 
+                        ? `${addSR.toFixed(2).replace('.', ',')}%`
+                        : addJumlahUdangPanen > 0 
+                        ? "Belum ada benur tebar"
+                        : "0%"
+                      }
+                    </span>
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center justify-between text-xs pt-1.5 border-t border-blue-100/80">
+                <span className="font-bold text-blue-900">Estimasi Pendapatan:</span>
+                <span className="font-black text-blue-700 text-sm font-mono">
+                  {formatIDR(previewRevenueAdd)}
+                </span>
               </div>
             </div>
 
@@ -448,7 +549,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className={jenisKomoditas !== "rumput_laut" ? "grid grid-cols-2 gap-3" : "space-y-2"}>
               <div className="space-y-2">
                 <Label htmlFor="edit_berat_panen">{config.harvestWeightLabel}</Label>
                 <Input
@@ -464,30 +565,69 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="edit_harga_jual">{config.harvestPriceLabel}</Label>
-                <Input
-                  id="edit_harga_jual"
-                  type="number"
-                  placeholder="85000"
-                  disabled={isSubmitting}
-                  {...registerEdit("harga_jual", { valueAsNumber: true })}
-                  className={editErrors.harga_jual ? "border-red-500 focus-visible:ring-red-500" : ""}
-                />
-                {editErrors.harga_jual && (
-                  <p className="text-xs text-red-500">{editErrors.harga_jual.message}</p>
-                )}
-              </div>
+              {jenisKomoditas !== "rumput_laut" && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit_size">Size (ekor/kg)</Label>
+                  <Input
+                    id="edit_size"
+                    type="number"
+                    placeholder="100"
+                    disabled={isSubmitting}
+                    {...registerEdit("size", { valueAsNumber: true })}
+                    className={editErrors.size ? "border-red-500 focus-visible:ring-red-500" : ""}
+                  />
+                  {editErrors.size && (
+                    <p className="text-xs text-red-500">{editErrors.size.message}</p>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Live Preview Card */}
-            <div className="rounded-xl border border-blue-50 bg-blue-50/30 p-3.5 flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-blue-800 font-bold">
-                <AlertCircle className="h-4.5 w-4.5" />
-                Estimasi Pendapatan:
-              </div>
-              <div className="text-blue-900 font-black text-base">
-                {formatIDR(previewRevenueEdit)}
+            <div className="space-y-2">
+              <Label htmlFor="edit_harga_jual">{config.harvestPriceLabel}</Label>
+              <Input
+                id="edit_harga_jual"
+                type="number"
+                placeholder="85000"
+                disabled={isSubmitting}
+                {...registerEdit("harga_jual", { valueAsNumber: true })}
+                className={editErrors.harga_jual ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {editErrors.harga_jual && (
+                <p className="text-xs text-red-500">{editErrors.harga_jual.message}</p>
+              )}
+            </div>
+
+            {/* Realtime Automatic Indicators Box */}
+            <div className="space-y-2 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+              {jenisKomoditas !== "rumput_laut" && (
+                <>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-600">Estimasi Jumlah Udang Panen:</span>
+                    <span className="font-black text-slate-900 font-mono">
+                      {editJumlahUdangPanen > 0 ? `${formatNumber(editJumlahUdangPanen)} ekor` : "0 ekor"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-600">Survival Rate (SR):</span>
+                    <span className={`font-black font-mono px-2 py-0.5 rounded-md text-xs ${editSR >= 70 ? "bg-emerald-100 text-emerald-800" : editSR > 0 ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+                      {totalBenurTebar > 0 
+                        ? `${editSR.toFixed(2).replace('.', ',')}%`
+                        : editJumlahUdangPanen > 0 
+                        ? "Belum ada benur tebar"
+                        : "0%"
+                      }
+                    </span>
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center justify-between text-xs pt-1.5 border-t border-blue-100/80">
+                <span className="font-bold text-blue-900">Estimasi Pendapatan:</span>
+                <span className="font-black text-blue-700 text-sm font-mono">
+                  {formatIDR(previewRevenueEdit)}
+                </span>
               </div>
             </div>
 

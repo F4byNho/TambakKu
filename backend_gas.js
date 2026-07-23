@@ -26,13 +26,14 @@ function initDatabase() {
   
   const tables = {
     "Users": ["user_id", "nama", "email", "password", "nomor_hp", "alamat", "role", "tanggal_daftar"],
-    "Tambak": ["tambak_id", "user_id", "nama_tambak", "lokasi", "luas_tambak", "keterangan"],
+    "Anggota": ["anggota_id", "user_id", "nama_anggota", "no_hp", "alamat", "status_keanggotaan", "tanggal_bergabung", "catatan"],
+    "Tambak": ["tambak_id", "user_id", "nama_tambak", "lokasi", "luas_tambak", "keterangan", "anggota_id", "status_tambak", "catatan"],
     "Siklus": ["siklus_id", "tambak_id", "user_id", "nomor_siklus", "tanggal_mulai", "tanggal_selesai", "status"],
     "Komoditas": ["komoditas_id", "siklus_id", "user_id", "nama_komoditas", "jenis_komoditas", "tanggal_mulai", "status"],
-    "Penebaran Benur": ["benur_id", "siklus_id", "user_id", "tanggal_tebar", "jenis_udang", "ukuran_PL", "jumlah_benur", "harga_per_ekor", "total_harga", "komoditas_id"],
+    "Penebaran Benur": ["benur_id", "siklus_id", "user_id", "tanggal_tebar", "jenis_udang", "ukuran_PL", "jumlah_benur", "harga_per_ekor", "total_harga", "komoditas_id", "asal_benih"],
     "Operasional": ["operasional_id", "siklus_id", "user_id", "tanggal", "kategori", "nominal", "keterangan", "komoditas_id"],
     "Sampling": ["sampling_id", "siklus_id", "user_id", "tanggal_sampling", "jumlah_udang_sampling", "berat_total_sampling", "abw", "size", "komoditas_id"],
-    "Panen": ["panen_id", "siklus_id", "user_id", "tanggal_panen", "berat_panen", "harga_jual", "pendapatan", "komoditas_id"],
+    "Panen": ["panen_id", "siklus_id", "user_id", "tanggal_panen", "berat_panen", "harga_jual", "pendapatan", "komoditas_id", "size", "jumlah_ekor", "sr_percent"],
     "HPP Settings": ["hpp_setting_id", "siklus_id", "komoditas_id", "user_id", "alokasi_persen", "markup_persen", "margin_persen", "harga_jual_input", "updated_at"]
   };
 
@@ -123,9 +124,18 @@ function doGet(e) {
         const user = users.find(u => u.email === params.email);
         return jsonResponse({ data: user || null });
         
+      case "getAnggota":
+        const anggotaList = readSheetData("Anggota");
+        const filteredAnggota = anggotaList.filter(a => a.user_id === params.userId || params.isAdmin === "true");
+        return jsonResponse({ data: filteredAnggota });
+
       case "getTambak":
         const tambaks = readSheetData("Tambak");
-        const filteredTambak = tambaks.filter(t => t.user_id === params.userId || params.isAdmin === "true");
+        const filteredTambak = tambaks.filter(t => {
+          const matchUser = t.user_id === params.userId || params.isAdmin === "true";
+          const matchAnggota = params.anggotaId ? t.anggota_id === params.anggotaId : true;
+          return matchUser && matchAnggota;
+        });
         return jsonResponse({ data: filteredTambak });
         
       case "getSiklus":
@@ -232,15 +242,41 @@ function doPost(e) {
         ]);
         return jsonResponse({ success: true, message: "User berhasil dibuat" });
         
+      case "createAnggota":
+        const anggotaSheet = ss.getSheetByName("Anggota");
+        anggotaSheet.appendRow([
+          data.anggota_id,
+          data.user_id,
+          data.nama_anggota,
+          data.no_hp || "",
+          data.alamat || "",
+          data.status_keanggotaan || "Aktif",
+          data.tanggal_bergabung,
+          data.catatan || ""
+        ]);
+        return jsonResponse({ success: true, message: "Anggota Pokdakan berhasil dibuat" });
+
+      case "updateAnggota":
+        return updateRowData("Anggota", "anggota_id", data.anggota_id, data);
+
+      case "deleteAnggota":
+        // Hapus juga tambak milik anggota ini
+        const tSheet = ss.getSheetByName("Tambak");
+        deleteRowsByFilter("Tambak", "anggota_id", data.anggota_id);
+        return deleteRowData("Anggota", "anggota_id", data.anggota_id);
+
       case "createTambak":
         const tambakSheet = ss.getSheetByName("Tambak");
         tambakSheet.appendRow([
           data.tambak_id,
           data.user_id,
           data.nama_tambak,
-          data.lokasi,
+          data.lokasi || "",
           Number(data.luas_tambak),
-          data.keterangan || ""
+          data.keterangan || "",
+          data.anggota_id || "",
+          data.status_tambak || "Aktif",
+          data.catatan || ""
         ]);
         return jsonResponse({ success: true, message: "Tambak berhasil dibuat" });
         
@@ -312,7 +348,8 @@ function doPost(e) {
           Number(data.jumlah_benur),
           Number(data.harga_per_ekor),
           totalHargaBenur,
-          data.komoditas_id || ""
+          data.komoditas_id || "",
+          data.asal_benih || ""
         ]);
         return jsonResponse({ success: true, message: "Pencatatan bibit berhasil disimpan", total_harga: totalHargaBenur });
         
@@ -392,7 +429,10 @@ function doPost(e) {
           Number(data.berat_panen),
           Number(data.harga_jual),
           pendapatan,
-          data.komoditas_id || ""
+          data.komoditas_id || "",
+          Number(data.size || 0),
+          Number(data.jumlah_ekor || 0),
+          Number(data.sr_percent || 0)
         ]);
         return jsonResponse({ success: true, message: "Data panen berhasil dicatat", pendapatan });
         
@@ -502,6 +542,7 @@ function deleteRowsByFilter(sheetName, filterColumnName, filterValue) {
 
 // Agregasi Data Dashboard
 function getDashboardDataset(userId) {
+  const anggotaList = readSheetData("Anggota").filter(a => a.user_id === userId);
   const tambaks = readSheetData("Tambak").filter(t => t.user_id === userId);
   const siklus = readSheetData("Siklus").filter(s => s.user_id === userId);
   const komoditas = readSheetData("Komoditas").filter(k => k.user_id === userId);
@@ -511,6 +552,7 @@ function getDashboardDataset(userId) {
   const panens = readSheetData("Panen").filter(p => p.user_id === userId);
   
   const activeSiklus = siklus.filter(s => s.status === "aktif");
+  const totalLuasTambak = tambaks.reduce((acc, curr) => acc + Number(curr.luas_tambak || 0), 0);
   
   // Total Modal = Benur + Operasional
   const totalBenurCost = benurs.reduce((acc, curr) => acc + Number(curr.total_harga || 0), 0);
@@ -528,7 +570,6 @@ function getDashboardDataset(userId) {
   let lastAbw = 0;
   let lastSize = 0;
   if (samplings.length > 0) {
-    // Sort by date descending
     samplings.sort((a, b) => new Date(b.tanggal_sampling) - new Date(a.tanggal_sampling));
     lastAbw = Number(samplings[0].abw || 0);
     lastSize = Number(samplings[0].size || 0);
@@ -537,7 +578,9 @@ function getDashboardDataset(userId) {
   return jsonResponse({
     data: {
       metrics: {
+        totalAnggota: anggotaList.length,
         totalTambak: tambaks.length,
+        totalLuasTambak,
         activeSiklus: activeSiklus.length,
         totalKomoditas: komoditas.length,
         totalModal,
@@ -547,6 +590,14 @@ function getDashboardDataset(userId) {
         lastAbw,
         lastSize
       },
+      anggota: anggotaList,
+      tambak: tambaks.map(t => {
+        const owner = anggotaList.find(a => a.anggota_id === t.anggota_id);
+        return {
+          ...t,
+          nama_anggota: owner ? owner.nama_anggota : "Tanpa Pemilik"
+        };
+      }),
       // Data untuk chart
       cyclesSummary: siklus.map(s => {
         const cBenur = benurs.filter(b => b.siklus_id === s.siklus_id).reduce((acc, c) => acc + Number(c.total_harga || 0), 0);
@@ -619,7 +670,7 @@ function getLaporanDataset(userId, tambakId, siklusId) {
     data: {
       tambaks: tambaks.filter(t => !tambakId || t.tambak_id === tambakId),
       siklus: filteredSiklus,
-      komoditas: komoditas,
+      komoditas: komoditas.filter(k => siklusIds.includes(k.siklus_id)),
       benur: benurs,
       operasional: ops,
       sampling: samplings,
