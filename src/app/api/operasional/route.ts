@@ -68,15 +68,17 @@ export async function POST(req: Request) {
     }
     
     const operasionalId = crypto.randomUUID();
+    const { tanggal, ...restData } = result.data;
+
     const payload = {
       operasional_id: operasionalId,
       siklus_id: siklusId,
       user_id: session.userId,
-      tanggal: result.data.tanggal, // Used by createOperasional in GAS
-      tanggal_operasional: result.data.tanggal, // Needed for updateRowData
+      tanggal, // Used by createOperasional in GAS
+      tanggal_operasional: tanggal, // Needed for updateRowData
       deskripsi: result.data.nominal, // Hack: GAS expects deskripsi to be nominal based on column order
       biaya: result.data.keterangan, // Hack: GAS expects biaya to be keterangan based on column order
-      ...result.data,
+      ...restData,
     };
     
     const res = await postToGAS("createOperasional", payload);
