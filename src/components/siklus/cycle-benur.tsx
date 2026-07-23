@@ -218,78 +218,78 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between bg-slate-50/80 p-4.5 rounded-3xl border-2 border-slate-150">
         <div>
-          <h3 className="text-base font-bold text-slate-900">
+          <h3 className="text-base font-black text-slate-900">
             Riwayat {config.stockingLabel}
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Log {config.stockingLabel.toLowerCase()} {config.name.toLowerCase()} pada siklus ini.
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Daftar pencatatan bibit {config.name.toLowerCase()} yang dilepas pada siklus ini.
           </p>
         </div>
         {isCycleActive && (
           <Button
             onClick={() => setIsAddOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm self-start sm:self-auto"
+            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-xs h-11 px-5 text-xs sm:text-sm text-white shrink-0 w-full sm:w-auto"
           >
-            <Plus className="mr-2 h-4 w-4" /> Catat {config.stockingLabel}
+            <Plus className="mr-1.5 h-4 w-4" /> Catat {config.stockingLabel}
           </Button>
         )}
       </div>
 
       {/* Main Table */}
-      <Card className="border-slate-100 shadow-sm">
+      <Card className="border-2 border-slate-100 shadow-2xs rounded-3xl overflow-hidden">
         {isLoading ? (
           <div className="flex h-48 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-semibold">Memuat riwayat...</p>
+              <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+              <p className="text-xs text-slate-500 font-bold">Memuat riwayat penebaran bibit...</p>
             </div>
           </div>
         ) : logs.length > 0 ? (
           <div className="p-4 sm:p-6">
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
               <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow className="border-b border-slate-100">
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">{config.stockingDateLabel}</TableHead>
-                    <TableHead className="font-bold text-slate-700">{config.stockingNameLabel}</TableHead>
-                    <TableHead className="w-[120px] text-center font-bold text-slate-700">{config.stockingSizeLabel}</TableHead>
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">{config.stockingQtyLabel}</TableHead>
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">{config.stockingPriceLabel}</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">Total Harga</TableHead>
-                    {isCycleActive && <TableHead className="w-[120px] text-center font-bold text-slate-700">Aksi</TableHead>}
+                <TableHeader className="bg-slate-100/70">
+                  <TableRow className="border-b border-slate-200">
+                    <TableHead className="w-[140px] text-center font-extrabold text-slate-900 text-xs uppercase">{config.stockingDateLabel}</TableHead>
+                    <TableHead className="font-extrabold text-slate-900 text-xs uppercase">{config.stockingNameLabel}</TableHead>
+                    <TableHead className="w-[120px] text-center font-extrabold text-slate-900 text-xs uppercase">{config.stockingSizeLabel}</TableHead>
+                    <TableHead className="w-[140px] text-center font-extrabold text-slate-900 text-xs uppercase">{config.stockingQtyLabel}</TableHead>
+                    <TableHead className="w-[140px] text-center font-extrabold text-slate-900 text-xs uppercase">{config.stockingPriceLabel}</TableHead>
+                    <TableHead className="w-[160px] text-center font-extrabold text-slate-900 text-xs uppercase">Total Biaya</TableHead>
+                    {isCycleActive && <TableHead className="w-[160px] text-center font-extrabold text-slate-900 text-xs uppercase">Tindakan</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logs.map((log) => (
-                    <TableRow key={log.benur_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="text-center font-medium text-slate-700">{formatDate(log.tanggal_tebar || (log as any).tanggal)}</TableCell>
-                      <TableCell className="font-bold text-slate-900">{log.jenis_udang}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-600">{log.ukuran_PL}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-800">{formatNumber(log.jumlah_benur)} {config.stockingQtyUnit}</TableCell>
-                      <TableCell className="text-center font-medium text-slate-500">{formatIDR(log.harga_per_ekor)}</TableCell>
-                      <TableCell className="text-center font-bold text-slate-900">{formatIDR(log.total_harga)}</TableCell>
+                    <TableRow key={log.benur_id} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
+                      <TableCell className="text-center font-bold text-slate-700 text-xs">{formatDate(log.tanggal_tebar || (log as any).tanggal)}</TableCell>
+                      <TableCell className="font-black text-slate-900 text-xs">{log.jenis_udang}</TableCell>
+                      <TableCell className="text-center font-bold text-slate-600 text-xs">{log.ukuran_PL}</TableCell>
+                      <TableCell className="text-center font-black text-blue-700 text-xs">{formatNumber(log.jumlah_benur)} {config.stockingQtyUnit}</TableCell>
+                      <TableCell className="text-center font-semibold text-slate-600 text-xs">{formatIDR(log.harga_per_ekor)}</TableCell>
+                      <TableCell className="text-center font-black text-slate-900 text-xs">{formatIDR(log.total_harga)}</TableCell>
                       {isCycleActive && (
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
+                          <div className="flex items-center justify-center gap-1.5">
                             <Button
-                              variant="ghost"
-                              size="icon"
+                              variant="outline"
+                              size="sm"
                               onClick={() => openEditDialog(log)}
-                              className="h-8.5 w-8.5 text-amber-600 hover:bg-amber-50 rounded-lg"
+                              className="h-8 border-amber-300 text-amber-800 hover:bg-amber-50 font-bold text-[11px] rounded-xl px-2.5"
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="mr-1 h-3.5 w-3.5 text-amber-600" /> Ubah
                             </Button>
                             <Button
-                              variant="ghost"
-                              size="icon"
+                              variant="outline"
+                              size="sm"
                               onClick={() => openDeleteDialog(log)}
-                              className="h-8.5 w-8.5 text-red-600 hover:bg-red-50 rounded-lg"
+                              className="h-8 border-red-200 text-red-700 hover:bg-red-50 font-bold text-[11px] rounded-xl px-2.5"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="mr-1 h-3.5 w-3.5 text-red-500" /> Hapus
                             </Button>
                           </div>
                         </TableCell>

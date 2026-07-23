@@ -14,7 +14,9 @@ import {
   ChevronLeft, 
   ChevronRight,
   Filter,
-  AlertTriangle
+  AlertTriangle,
+  Timer,
+  Building2
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -252,40 +254,45 @@ export default function SiklusPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            Siklus Budidaya
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Kelola siklus penebaran, operasional harian, dan sampling udang per kolam.
-          </p>
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
+      {/* Header Banner */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 text-slate-900 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+              <Timer className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Siklus Budidaya Tambak</h3>
+              <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
+                Kelola pencatatan bibit, penimbangan pertumbuhan, dan hasil panen di setiap siklus.
+              </p>
+            </div>
+          </div>
+          {tambaks.length > 0 && (
+            <Button 
+              onClick={() => setIsAddOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 font-bold text-xs sm:text-sm rounded-xl h-11 px-5 text-white shrink-0 w-full sm:w-auto"
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> Mulai Siklus Baru
+            </Button>
+          )}
         </div>
-        {tambaks.length > 0 && (
-          <Button 
-            onClick={() => setIsAddOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 font-semibold shadow-sm rounded-xl self-start sm:self-auto"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Mulai Siklus Baru
-          </Button>
-        )}
       </div>
 
       {/* Warning if no Tambak exists */}
       {tambaks.length === 0 && !isLoading && (
-        <Card className="border-yellow-200 bg-yellow-50/50 shadow-none">
+        <Card className="border border-amber-200 bg-amber-50/50 shadow-2xs rounded-2xl">
           <CardContent className="p-4 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-sm font-bold text-yellow-800">Tambak Belum Terdaftar</h4>
-              <p className="text-xs text-yellow-700 mt-1 leading-relaxed">
-                Anda harus mendaftarkan sekurang-kurangnya satu tambak/kolam sebelum dapat memulai siklus budidaya baru.
+              <h4 className="text-xs font-bold text-amber-900">Belum Ada Kolam Tambak Terdaftar</h4>
+              <p className="text-xs text-amber-800 mt-0.5 leading-relaxed font-normal">
+                Anda perlu menambahkan sekurang-kurangnya 1 kolam tambak terlebih dahulu sebelum bisa membuat siklus baru.
               </p>
-              <Link href="/tambak" className="inline-block mt-3">
-                <Button size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-xs h-8">
-                  Daftar Tambak Baru
+              <Link href="/tambak" className="inline-block mt-2">
+                <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs h-8 px-3">
+                  Tambah Kolam Tambak
                 </Button>
               </Link>
             </div>
@@ -294,27 +301,27 @@ export default function SiklusPage() {
       )}
 
       {/* Filter & Search Bar */}
-      <Card className="border-slate-100 shadow-sm">
+      <Card className="border-2 border-slate-100 shadow-2xs rounded-3xl">
         <CardContent className="p-4 flex flex-col md:flex-row gap-3">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <Input
-              placeholder="Cari berdasarkan nama kolam atau urutan nomor siklus..."
+              placeholder="Cari nama kolam atau nomor siklus..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 rounded-xl border-slate-150 focus-visible:ring-blue-600"
+              className="pl-11 rounded-2xl border-slate-200 h-11 focus-visible:ring-indigo-600 font-medium text-slate-800"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {/* Filter Tambak */}
-            <div className="flex items-center gap-1.5">
-              <Filter className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-slate-500 shrink-0" />
               <select
                 value={selectedTambakId}
                 onChange={(e) => setSelectedTambakId(e.target.value)}
-                className="h-10 rounded-xl border border-slate-150 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="h-11 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-600"
               >
                 <option value="all">Semua Kolam</option>
                 {tambaks.map((t) => (
@@ -329,63 +336,70 @@ export default function SiklusPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-10 rounded-xl border border-slate-150 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-600"
             >
               <option value="all">Semua Status</option>
-              <option value="aktif">Aktif</option>
-              <option value="selesai">Selesai</option>
+              <option value="aktif">Sedang Berjalan (Aktif)</option>
+              <option value="selesai">Sudah Panen (Selesai)</option>
             </select>
           </div>
         </CardContent>
       </Card>
 
       {/* Main Table Content */}
-      <Card className="border-slate-100 shadow-sm">
+      <Card className="border-2 border-slate-100 shadow-2xs rounded-3xl overflow-hidden">
         {isLoading ? (
           <div className="flex h-60 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-semibold">Memuat data siklus...</p>
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+              <p className="text-xs text-slate-500 font-bold">Memuat data siklus budidaya...</p>
             </div>
           </div>
         ) : paginatedCycles.length > 0 ? (
           <div className="p-4 sm:p-6 flex flex-col gap-4">
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
               <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow className="border-b border-slate-100">
-                    <TableHead className="font-bold text-slate-700">Kolam Tambak</TableHead>
-                    <TableHead className="w-[90px] text-center font-bold text-slate-700">Siklus</TableHead>
-                    <TableHead className="w-[120px] text-center font-bold text-slate-700">Mulai</TableHead>
-                    <TableHead className="w-[120px] text-center font-bold text-slate-700">Selesai</TableHead>
-                    <TableHead className="w-[100px] text-center font-bold text-slate-700">Status</TableHead>
-                    <TableHead className="w-[260px] text-center font-bold text-slate-700">Aksi</TableHead>
+                <TableHeader className="bg-slate-100/70">
+                  <TableRow className="border-b border-slate-200">
+                    <TableHead className="font-extrabold text-slate-900 text-xs uppercase">Kolam Tambak</TableHead>
+                    <TableHead className="w-[100px] text-center font-extrabold text-slate-900 text-xs uppercase">Siklus</TableHead>
+                    <TableHead className="w-[130px] text-center font-extrabold text-slate-900 text-xs uppercase">Tanggal Mulai</TableHead>
+                    <TableHead className="w-[130px] text-center font-extrabold text-slate-900 text-xs uppercase">Tanggal Selesai</TableHead>
+                    <TableHead className="w-[120px] text-center font-extrabold text-slate-900 text-xs uppercase">Status</TableHead>
+                    <TableHead className="w-[280px] text-center font-extrabold text-slate-900 text-xs uppercase">Tindakan</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedCycles.map((cycle) => (
-                    <TableRow key={cycle.siklus_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="font-bold text-slate-900">{getTambakName(cycle.tambak_id)}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-800">Siklus #{cycle.nomor_siklus}</TableCell>
-                      <TableCell className="text-center font-medium text-slate-600">{formatDate(cycle.tanggal_mulai)}</TableCell>
-                      <TableCell className="text-center font-medium text-slate-600">
+                    <TableRow key={cycle.siklus_id} className="border-b border-slate-100 hover:bg-indigo-50/30 transition-colors">
+                      <TableCell className="font-black text-slate-900 text-sm">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 font-bold text-xs border border-blue-100">
+                            <Building2 className="h-4 w-4" />
+                          </div>
+                          <span>{getTambakName(cycle.tambak_id)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center font-bold text-slate-800 text-xs">Siklus #{cycle.nomor_siklus}</TableCell>
+                      <TableCell className="text-center font-semibold text-slate-600 text-xs">{formatDate(cycle.tanggal_mulai)}</TableCell>
+                      <TableCell className="text-center font-semibold text-slate-600 text-xs">
                         {formatDate(cycle.tanggal_selesai)}
                       </TableCell>
                       <TableCell className="text-center">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-extrabold ${
                           cycle.status === "aktif" 
-                            ? "bg-green-50 text-green-700" 
-                            : "bg-slate-100 text-slate-700"
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
+                            : "bg-slate-100 text-slate-700 border border-slate-200"
                         }`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${cycle.status === "aktif" ? "bg-green-500" : "bg-slate-400"}`} />
-                          {cycle.status === "aktif" ? "Aktif" : "Selesai"}
+                          <span className={`h-2 w-2 rounded-full ${cycle.status === "aktif" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                          {cycle.status === "aktif" ? "Sedang Berjalan" : "Sudah Panen"}
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-2">
                           <Link href={`/siklus/${cycle.siklus_id}`}>
-                            <Button variant="outline" size="sm" className="h-8.5 rounded-xl border-slate-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-bold text-xs gap-1.5">
-                              <Eye className="h-3.5 w-3.5" /> Detail & Catat
+                            <Button size="sm" className="h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-1.5 px-3 shadow-2xs">
+                              <Eye className="h-4 w-4" /> Detail & Catat
                             </Button>
                           </Link>
                           {cycle.status === "aktif" && (
@@ -393,18 +407,18 @@ export default function SiklusPage() {
                               variant="outline" 
                               size="sm" 
                               onClick={() => openEndDialog(cycle)}
-                              className="h-8.5 rounded-xl border-slate-200 text-green-600 hover:text-green-700 hover:bg-green-50 font-bold text-xs gap-1.5"
+                              className="h-9 rounded-xl border-emerald-300 text-emerald-800 hover:bg-emerald-50 font-bold text-xs gap-1.5 px-3"
                             >
-                              <CheckCircle className="h-3.5 w-3.5" /> Selesaikan
+                              <CheckCircle className="h-4 w-4 text-emerald-600" /> Panen
                             </Button>
                           )}
                           <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="outline" 
+                            size="sm" 
                             onClick={() => openDeleteDialog(cycle)}
-                            className="h-8.5 w-8.5 text-red-600 hover:bg-red-50 rounded-lg"
+                            className="h-9 rounded-xl border-red-200 text-red-700 hover:bg-red-50 font-bold text-xs gap-1.5 px-3"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-red-500" /> Hapus
                           </Button>
                         </div>
                       </TableCell>

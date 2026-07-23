@@ -210,9 +210,9 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
         {isCycleActive && (
           <Button
             onClick={() => setIsAddOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm self-start sm:self-auto"
+            className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl shadow-xs h-11 px-5 text-xs sm:text-sm text-white shrink-0 w-full sm:w-auto"
           >
-            <Plus className="mr-2 h-4 w-4" /> Tambah Pengeluaran
+            <Plus className="mr-1.5 h-4 w-4" /> Tambah Pengeluaran
           </Button>
         )}
       </div>

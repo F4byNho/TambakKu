@@ -8,6 +8,7 @@ import {
   Edit, 
   Trash2, 
   Eye,
+  ExternalLink,
   Loader2, 
   Building2, 
   ChevronLeft, 
@@ -190,125 +191,148 @@ export default function TambakPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            Daftar Tambak
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Kelola seluruh kolam tambak udang milik Anda di sini.
-          </p>
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
+      {/* Header Banner */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 text-slate-900 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Daftar Kolam Tambak</h3>
+              <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
+                Kelola nama, lokasi, dan luas (m²) seluruh kolam tambak yang Anda kelola.
+              </p>
+            </div>
+          </div>
+          <Button 
+            onClick={() => setIsAddOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 font-bold text-xs sm:text-sm rounded-xl h-11 px-5 text-white shrink-0 w-full sm:w-auto"
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> Tambah Kolam Baru
+          </Button>
         </div>
-        <Button 
-          onClick={() => setIsAddOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 font-semibold shadow-sm rounded-xl self-start sm:self-auto"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Tambah Tambak
-        </Button>
       </div>
 
       {/* Filter & Search Bar */}
-      <Card className="border-slate-100 shadow-sm">
+      <Card className="border-2 border-slate-100 shadow-2xs rounded-3xl">
         <CardContent className="p-4 flex flex-col md:flex-row gap-3">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <Input
-              placeholder="Cari berdasarkan nama tambak, lokasi, keterangan..."
+              placeholder="Cari nama kolam tambak, lokasi, atau catatan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 rounded-xl border-slate-150 focus-visible:ring-blue-600"
+              className="pl-11 rounded-2xl border-slate-200 h-11 focus-visible:ring-blue-600 font-medium text-slate-800"
             />
           </div>
           {/* Filter Dropdown */}
           <div className="flex items-center gap-2">
-            <Filter className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+            <Filter className="h-5 w-5 text-slate-500 shrink-0" />
             <select
               value={sizeFilter}
               onChange={(e) => setSizeFilter(e.target.value)}
-              className="h-10 rounded-xl border border-slate-150 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="h-11 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
             >
-              <option value="all">Semua Ukuran</option>
-              <option value="small">Kecil (&lt; 1.000 m²)</option>
-              <option value="medium">Sedang (1.000 - 5.000 m²)</option>
-              <option value="large">Besar (&gt; 5.000 m²)</option>
+              <option value="all">Semua Ukuran Kolam</option>
+              <option value="small">Kolam Kecil (&lt; 1.000 m²)</option>
+              <option value="medium">Kolam Sedang (1.000 - 5.000 m²)</option>
+              <option value="large">Kolam Besar (&gt; 5.000 m²)</option>
             </select>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-slate-100 shadow-sm">
+      <Card className="border-2 border-slate-100 shadow-2xs rounded-3xl overflow-hidden">
         {isLoading ? (
           <div className="flex h-60 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-semibold">Memuat data tambak...</p>
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <p className="text-xs text-slate-500 font-bold">Memuat daftar kolam tambak Anda...</p>
             </div>
           </div>
         ) : paginatedTambaks.length > 0 ? (
           <div className="p-4 sm:p-6 flex flex-col gap-4">
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
               <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow className="border-b border-slate-100">
-                    <TableHead className="font-bold text-slate-700">Nama Tambak</TableHead>
-                    <TableHead className="w-[180px] text-center font-bold text-slate-700">Lokasi</TableHead>
-                    <TableHead className="w-[140px] text-center font-bold text-slate-700">Luas Kolam</TableHead>
-                    <TableHead className="w-[180px] text-center font-bold text-slate-700">Keterangan</TableHead>
-                    <TableHead className="w-[180px] text-center font-bold text-slate-700">Aksi</TableHead>
+                <TableHeader className="bg-slate-100/70">
+                  <TableRow className="border-b border-slate-200">
+                    <TableHead className="font-extrabold text-slate-900 text-xs uppercase">Nama Kolam</TableHead>
+                    <TableHead className="w-[180px] text-center font-extrabold text-slate-900 text-xs uppercase">Lokasi Kolam</TableHead>
+                    <TableHead className="w-[160px] text-center font-extrabold text-slate-900 text-xs uppercase">Luas (m²)</TableHead>
+                    <TableHead className="w-[180px] text-center font-extrabold text-slate-900 text-xs uppercase">Status Budidaya</TableHead>
+                    <TableHead className="w-[220px] text-center font-extrabold text-slate-900 text-xs uppercase">Tindakan</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedTambaks.map((tambak) => (
-                    <TableRow key={tambak.tambak_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <TableCell className="font-bold text-slate-900">{tambak.nama_tambak}</TableCell>
-                      <TableCell className="text-center font-medium text-slate-600">{tambak.lokasi}</TableCell>
-                      <TableCell className="text-center font-semibold text-slate-800">
-                        {formatNumber(tambak.luas_tambak)} m²
-                      </TableCell>
-                      <TableCell className="text-center text-slate-500 text-xs max-w-[180px] truncate">
-                        {tambak.keterangan || "-"}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <Link href={`/siklus?tambakId=${tambak.tambak_id}`}>
-                            <Button variant="ghost" size="icon" className="h-8.5 w-8.5 text-blue-600 hover:bg-blue-50 rounded-lg" title="Lihat Siklus">
-                              <Eye className="h-4 w-4" />
+                  {paginatedTambaks.map((tambak) => {
+                    const hasActiveCycle = tambak.siklus && tambak.siklus.some((s) => s.status === "aktif");
+                    return (
+                      <TableRow key={tambak.tambak_id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <TableCell className="font-bold text-slate-900 text-xs">
+                          {tambak.nama_tambak}
+                        </TableCell>
+                        <TableCell className="text-center text-slate-600 text-xs font-normal">
+                          {tambak.lokasi || "-"}
+                        </TableCell>
+                        <TableCell className="text-center font-semibold text-slate-800 text-xs">
+                          {formatNumber(tambak.luas_tambak || (tambak as any).luas_m2 || 0)} m²
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span
+                            className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-semibold border ${
+                              hasActiveCycle
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-slate-100 text-slate-600 border-slate-200"
+                            }`}
+                          >
+                            {hasActiveCycle ? "Aktif Budidaya" : "Istirahat"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Link href={`/siklus`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold text-xs rounded-xl px-3"
+                              >
+                                <ExternalLink className="mr-1 h-3.5 w-3.5 text-blue-600" /> Siklus
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditDialog(tambak)}
+                              className="h-9 border-amber-200 text-amber-800 hover:bg-amber-50 font-bold text-xs rounded-xl px-3"
+                            >
+                              <Edit className="mr-1 h-3.5 w-3.5 text-amber-600" /> Ubah
                             </Button>
-                          </Link>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => openEditDialog(tambak)}
-                            className="h-8.5 w-8.5 text-amber-600 hover:bg-amber-50 rounded-lg"
-                            title="Ubah Data"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => openDeleteDialog(tambak)}
-                            className="h-8.5 w-8.5 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Hapus Tambak"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDeleteDialog(tambak)}
+                              className="h-9 border-red-200 text-red-700 hover:bg-red-50 font-bold text-xs rounded-xl px-3"
+                            >
+                              <Trash2 className="mr-1 h-3.5 w-3.5 text-red-500" /> Hapus
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
-            
+
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-2 pt-2">
                 <div className="text-xs text-slate-500 font-medium">
-                  Menampilkan <span className="font-bold">{startIndex + 1}</span> sampai{" "}
+                  Menampilkan{" "}
+                  <span className="font-bold">{startIndex + 1}</span> sampai{" "}
                   <span className="font-bold">
                     {Math.min(startIndex + itemsPerPage, filteredTambaks.length)}
                   </span>{" "}

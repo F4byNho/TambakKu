@@ -33,72 +33,120 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden pt-10 pb-12 lg:pt-16 lg:pb-20">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-100/50 via-slate-50 to-slate-50 -z-10"></div>
-          <div className="container mx-auto px-4 md:px-8 text-center max-w-4xl">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-950 mb-4 leading-tight">
-              Tingkatkan Hasil Panen Udang dengan <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Pencatatan Presisi</span>
+        <section className="relative overflow-hidden pt-12 pb-16 bg-white border-b border-slate-100">
+          <div className="container mx-auto px-4 md:px-8 text-center max-w-3xl">
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-3.5 py-1 text-xs font-semibold text-slate-700 mb-6 border border-slate-200">
+              Aplikasi Pencatatan Budidaya Tambak Udang
+            </span>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 mb-4 leading-tight">
+              Pencatatan Budidaya Udang Sederhana & Terstruktur
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-              Platform digital yang dirancang khusus untuk mempermudah petambak udang vaname skala kecil hingga menengah dalam mengelola kolam, memantau siklus budidaya, dan mencatat keuangan operasional.
+            <p className="text-base md:text-lg text-slate-600 mb-8 max-w-xl mx-auto leading-relaxed font-normal">
+              Solusi digital sederhana untuk petambak dalam mencatat kolam, operasional harian, pertumbuhan udang, dan perhitungan modal panen.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                href="/register"
-                className="w-full sm:w-auto h-12 px-8 inline-flex items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-base shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 hover:-translate-y-0.5 transition-all duration-200"
+                href="/login"
+                className="w-full sm:w-auto h-11 px-6 inline-flex items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors"
               >
-                Mulai Sekarang
+                Masuk ke Aplikasi
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
               <Link
-                href="/login"
-                className="w-full sm:w-auto h-12 px-8 inline-flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-base hover:bg-slate-50 transition-colors"
+                href="/register"
+                className="w-full sm:w-auto h-11 px-6 inline-flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors"
               >
-                Masuk ke Dashboard
+                Daftar Akun Baru
               </Link>
             </div>
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="py-10 lg:py-12 bg-white border-y border-slate-100">
+        {/* 3 Langkah Mudah */}
+        <section className="py-12 bg-slate-50">
           <div className="container mx-auto px-4 md:px-8">
-            <div className="text-center max-w-2xl mx-auto mb-8">
-              <h2 className="text-2xl lg:text-3xl font-extrabold text-slate-950 mb-3">Solusi Lengkap untuk Tambak Anda</h2>
-              <p className="text-slate-500 text-sm lg:text-base">Kelola operasional tambak jauh lebih mudah, efisien, dan transparan dalam satu platform digital terpadu.</p>
+            <div className="text-center max-w-xl mx-auto mb-8">
+              <h2 className="text-xl lg:text-2xl font-bold text-slate-900 mb-1">Panduan 3 Langkah Penggunaan</h2>
+              <p className="text-slate-500 text-xs lg:text-sm">Alur praktis untuk mulai mencatat tambak Anda.</p>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {/* Feature 1 */}
-              <div className="bg-slate-50 rounded-2xl p-5 lg:p-6 border border-slate-100 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
-                <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-4 lg:mb-5">
-                  <Droplets className="h-5 w-5 lg:h-6 lg:w-6" />
+            <div className="grid md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+              {/* Step 1 */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 text-center flex flex-col items-center">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mb-3">
+                  1
                 </div>
-                <h3 className="text-lg lg:text-xl font-bold text-slate-900 mb-2">Manajemen Kolam</h3>
-                <p className="text-slate-600 leading-relaxed text-sm">
-                  Daftarkan seluruh kolam tambak Anda beserta informasi spesifik seperti luas, lokasi, dan daya tampung. Semua aset tercatat rapi.
+                <h3 className="text-base font-bold text-slate-900 mb-1">Daftarkan Kolam</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Catat nama kolam tambak dan ukurannya (m²) agar data lokasi tersusun rapi.
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 text-center flex flex-col items-center">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mb-3">
+                  2
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1">Catat Penebaran & Biaya</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Isi tanggal sebar benur, biaya pakan harian, obat, dan penimbangan berat udang.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 text-center flex flex-col items-center">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mb-3">
+                  3
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1">Hitung Keuntungan Panen</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Masukkan total hasil panen. Sistem akan otomatis menghitung keuntungan bersih.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+        {/* Features Section */}
+        <section className="py-12 bg-slate-50">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-10">
+              <h2 className="text-2xl lg:text-3xl font-black text-slate-950 mb-2">Fitur Utama yang Ramah Warga</h2>
+              <p className="text-slate-600 text-sm lg:text-base font-medium">Bantu operasional tambak jauh lebih hemat waktu dan transparan.</p>
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {/* Feature 1 */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs">
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center mb-4">
+                  <Droplets className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Daftar Kolam Tambak</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Catat ukuran kolam (m²) dan posisinya agar memudahkan pembagian pemberian pakan dan probiotik.
                 </p>
               </div>
 
               {/* Feature 2 */}
-              <div className="bg-slate-50 rounded-2xl p-5 lg:p-6 border border-slate-100 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
-                <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-4 lg:mb-5">
-                  <BarChart3 className="h-5 w-5 lg:h-6 lg:w-6" />
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-4">
+                  <BarChart3 className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg lg:text-xl font-bold text-slate-900 mb-2">Pantau Siklus Budidaya</h3>
-                <p className="text-slate-600 leading-relaxed text-sm">
-                  Catat tanggal mulai penebaran benur hingga tanggal panen. Lacak perkembangan harian, sampling ukuran, serta tingkat kelangsungan hidup (SR).
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Pantau Pertumbuhan Udang</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Pantau rata-rata berat udang (ABW) dan perkiraan jumlah isi udang per kg (Size) secara teratur.
                 </p>
               </div>
 
               {/* Feature 3 */}
-              <div className="bg-slate-50 rounded-2xl p-5 lg:p-6 border border-slate-100 hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
-                <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 lg:mb-5">
-                  <Wallet className="h-5 w-5 lg:h-6 lg:w-6" />
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+                  <Wallet className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg lg:text-xl font-bold text-slate-900 mb-2">Pembukuan Terpusat</h3>
-                <p className="text-slate-600 leading-relaxed text-sm">
-                  Kelola dan catat setiap pengeluaran mulai dari pakan, probiotik, hingga operasional harian. Ketahui secara pasti modal yang dikeluarkan.
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Hitung Modal & Keuntungan</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Ketahui modal pengeluaran harian dan berapa untung bersih yang didapatkan setelah panen.
                 </p>
               </div>
             </div>

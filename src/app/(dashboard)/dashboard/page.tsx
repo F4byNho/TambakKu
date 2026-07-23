@@ -104,97 +104,99 @@ export default function DashboardPage() {
   const cycles = data?.cyclesSummary || [];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Welcome Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-            Selamat Datang di TambakKu 👋
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Pantau perkembangan budidaya udang vaname dan pembukuan keuangan Anda hari ini.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2.5">
-          <Link href="/tambak">
-            <Button className="bg-blue-600 hover:bg-blue-700 font-semibold shadow-sm">
-              <Plus className="mr-2 h-4 w-4" /> Tambah Tambak
-            </Button>
-          </Link>
+      <div className="rounded-2xl bg-slate-900 p-5 md:p-6 text-white shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg md:text-2xl font-bold tracking-tight">
+              Ringkasan Budidaya Tambak
+            </h2>
+            <p className="text-xs md:text-sm text-slate-300 mt-1 font-normal">
+              Pantau statistik kolam, modal pengeluaran, perkembangan berat udang, dan hasil panen Anda.
+            </p>
+          </div>
+          <div className="flex shrink-0 w-full sm:w-auto">
+            <Link href="/tambak" className="w-full sm:w-auto">
+              <Button className="bg-blue-600 hover:bg-blue-700 font-bold text-xs sm:text-sm h-11 px-5 rounded-xl text-white w-full sm:w-auto">
+                <Plus className="mr-1.5 h-4 w-4" /> Tambah Kolam Baru
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* KPI Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Total Tambak */}
-        <Card className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Jumlah Tambak
+              Jumlah Kolam
             </span>
-            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+            <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
               <Building2 className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{metrics.totalTambak} Kolam</div>
-            <p className="text-[10px] text-slate-500 mt-1">Tambak terdaftar aktif</p>
+            <div className="text-2xl font-black text-slate-900">{metrics.totalTambak} <span className="text-xs font-normal text-slate-500">Kolam</span></div>
+            <p className="text-xs text-slate-400 mt-1">Total kolam terdaftar</p>
           </CardContent>
         </Card>
 
         {/* Card 2: Siklus Aktif */}
-        <Card className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Siklus Aktif
+              Siklus Berjalan
             </span>
-            <div className="rounded-lg bg-green-50 p-2 text-green-600">
+            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
               <Timer className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{metrics.activeSiklus} Siklus</div>
-            <p className="text-[10px] text-slate-500 mt-1">Siklus sedang berjalan</p>
+            <div className="text-2xl font-black text-blue-700">{metrics.activeSiklus} <span className="text-xs font-normal text-slate-500">Siklus</span></div>
+            <p className="text-xs text-slate-400 mt-1">Kolam aktif dibudidayakan</p>
           </CardContent>
         </Card>
 
         {/* Card 3: Total Modal */}
-        <Card className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Total Modal
+              Total Modal Produksi
             </span>
-            <div className="rounded-lg bg-yellow-50 p-2 text-yellow-600">
+            <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
               <Coins className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-black text-slate-900">{formatIDR(metrics.totalModal)}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Biaya benur + operasional</p>
+            <p className="text-xs text-slate-400 mt-1">Biaya bibit + operasional</p>
           </CardContent>
         </Card>
 
         {/* Card 4: Total Pendapatan */}
-        <Card className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Pendapatan
+              Hasil Jual Panen
             </span>
-            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
+            <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
               <TrendingUp className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-black text-slate-900">{formatIDR(metrics.totalRevenue)}</div>
-            <p className="text-[10px] text-slate-500 mt-1">Hasil panen terjual</p>
+            <p className="text-xs text-slate-400 mt-1">Pendapatan hasil panen</p>
           </CardContent>
         </Card>
 
         {/* Card 5: Laba Bersih */}
-        <Card className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Laba Bersih
+              Keuntungan Bersih
             </span>
             <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
               <TrendingUp className="h-4 w-4" />
@@ -204,55 +206,55 @@ export default function DashboardPage() {
             <div className={`text-2xl font-black ${metrics.totalLaba >= 0 ? "text-emerald-600" : "text-red-600"}`}>
               {formatIDR(metrics.totalLaba)}
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Pendapatan - Modal</p>
+            <p className="text-xs text-slate-400 mt-1">Sisa untung setelah modal</p>
           </CardContent>
         </Card>
 
         {/* Card 6: ABW Terakhir */}
-        <Card className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              ABW Terakhir
+              Rata-rata Berat Udang (ABW)
             </span>
-            <div className="rounded-lg bg-pink-50 p-2 text-pink-600">
+            <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
               <Heart className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{formatNumber(metrics.lastAbw)} g</div>
-            <p className="text-[10px] text-slate-500 mt-1">Rata-rata berat udang</p>
+            <div className="text-2xl font-black text-slate-900">{formatNumber(metrics.lastAbw)} <span className="text-xs font-normal text-slate-500">gram</span></div>
+            <p className="text-xs text-slate-400 mt-1">Berat rata-rata 1 ekor udang</p>
           </CardContent>
         </Card>
 
         {/* Card 7: Size Terakhir */}
-        <Card className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Size Terakhir
+              Isi Udang per KG (Size)
             </span>
-            <div className="rounded-lg bg-cyan-50 p-2 text-cyan-600">
+            <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
               <Scale className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{metrics.lastSize > 0 ? Math.round(metrics.lastSize) : 0} ekor/kg</div>
-            <p className="text-[10px] text-slate-500 mt-1">Ukuran isi udang per kg</p>
+            <div className="text-2xl font-black text-slate-900">{metrics.lastSize > 0 ? Math.round(metrics.lastSize) : 0} <span className="text-xs font-normal text-slate-500">ekor/kg</span></div>
+            <p className="text-xs text-slate-400 mt-1">Estimasi isi ekor per 1 kg</p>
           </CardContent>
         </Card>
 
         {/* Card 8: Total Panen */}
-        <Card className="border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Total Panen
+              Total Hasil Panen
             </span>
-            <div className="rounded-lg bg-orange-50 p-2 text-orange-600">
+            <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
               <Layers className="h-4 w-4" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{formatNumber(metrics.totalHarvestWeight)} kg</div>
-            <p className="text-[10px] text-slate-500 mt-1">Berat kotor hasil panen</p>
+            <div className="text-2xl font-black text-slate-900">{formatNumber(metrics.totalHarvestWeight)} <span className="text-xs font-normal text-slate-500">KG</span></div>
+            <p className="text-xs text-slate-400 mt-1">Total berat udang dipanen</p>
           </CardContent>
         </Card>
       </div>
@@ -260,19 +262,23 @@ export default function DashboardPage() {
       {/* Main Charts & Side Columns */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Chart Column: Pendapatan vs Modal */}
-        <Card className="border-slate-100 shadow-sm lg:col-span-2">
+        <Card className="border border-slate-200 shadow-2xs lg:col-span-2 rounded-2xl bg-white">
           <CardHeader>
-            <CardTitle className="text-base font-bold">Analisis Keuangan per Siklus</CardTitle>
-            <CardDescription>Perbandingan total modal (benur + biaya operasional) dengan hasil penjualan (pendapatan)</CardDescription>
+            <CardTitle className="text-base font-bold text-slate-900">
+              Grafik Modal vs Pendapatan
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500">
+              Perbandingan total pengeluaran modal (kuning) dengan hasil penjualan panen (biru).
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             {isMounted && cycles.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={cycles} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="nama_tambak" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <XAxis dataKey="nama_tambak" stroke="#64748b" fontSize={11} tickLine={false} fontWeight={600} />
                   <YAxis 
-                    stroke="#94a3b8" 
+                    stroke="#64748b" 
                     fontSize={11} 
                     tickLine={false} 
                     axisLine={false}
@@ -288,70 +294,72 @@ export default function DashboardPage() {
                   />
                   <Tooltip 
                     formatter={(value: any) => formatIDR(Number(value))}
-                    contentStyle={{ borderRadius: "12px", border: "1px solid #f1f5f9", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }}
+                    contentStyle={{ borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)" }}
                   />
-                  <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px", fontWeight: 600 }} />
-                  <Bar dataKey="modal" name="Total Modal" fill="#fbbf24" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="pendapatan" name="Total Pendapatan" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "11px", fontWeight: 600 }} />
+                  <Bar dataKey="modal" name="Total Modal Pengeluaran" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="pendapatan" name="Total Hasil Jual Panen" fill="#2563eb" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full flex-col items-center justify-center text-slate-400">
-                <Calendar className="h-8 w-8 mb-2 stroke-1" />
-                <p className="text-xs">Belum ada data siklus untuk dianalisis</p>
+              <div className="flex h-full flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <Calendar className="h-8 w-8 mb-2 stroke-1 text-slate-400" />
+                <p className="text-xs font-bold text-slate-600">Belum Ada Data Siklus Tambak</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Mulai buat siklus pertama di menu Siklus Budidaya</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Side Panel: Quick Actions & Recent Activities */}
+        {/* Side Panel: Quick Actions */}
         <div className="flex flex-col gap-6">
-          {/* Quick Action Container */}
-          <Card className="border-slate-100 shadow-sm flex-1">
-            <CardHeader>
-              <CardTitle className="text-base font-bold">Aksi Cepat</CardTitle>
-              <CardDescription>Jalan pintas pencatatan data budidaya</CardDescription>
+          <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-bold text-slate-900">
+                Menu Aksi Cepat
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">Jalan pintas ke menu utama</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-2">
-              <Link href="/siklus">
-                <Button variant="outline" className="w-full justify-start rounded-xl font-semibold hover:text-blue-600 hover:bg-blue-50 border-slate-100">
-                  <ArrowUpRight className="mr-2 h-4 w-4 text-blue-600" />
-                  Mulai Siklus Baru
-                </Button>
+              <Link href="/tambak">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-all cursor-pointer group">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">Daftar Kolam Tambak</p>
+                    <p className="text-[10px] text-slate-500">Kelola lokasi & ukuran m²</p>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                </div>
               </Link>
-              <Link href="/siklus">
-                <Button variant="outline" className="w-full justify-start rounded-xl font-semibold hover:text-blue-600 hover:bg-blue-50 border-slate-100">
-                  <ArrowUpRight className="mr-2 h-4 w-4 text-blue-600" />
-                  Catat Penebaran Benur
-                </Button>
-              </Link>
-              <Link href="/siklus">
-                <Button variant="outline" className="w-full justify-start rounded-xl font-semibold hover:text-blue-600 hover:bg-blue-50 border-slate-100">
-                  <ArrowUpRight className="mr-2 h-4 w-4 text-blue-600" />
-                  Catat Biaya Operasional
-                </Button>
-              </Link>
-              <Link href="/siklus">
-                <Button variant="outline" className="w-full justify-start rounded-xl font-semibold hover:text-blue-600 hover:bg-blue-50 border-slate-100">
-                  <ArrowUpRight className="mr-2 h-4 w-4 text-blue-600" />
-                  Catat Sampling Mingguan
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
 
-          {/* Recent Activity Container */}
-          <Card className="border-slate-100 shadow-sm flex-1">
-            <CardHeader>
-              <CardTitle className="text-base font-bold">Aktivitas Terbaru</CardTitle>
-              <CardDescription>Riwayat pengisian data terakhir Anda</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-              <Activity className="h-8 w-8 text-slate-300 stroke-1 mb-2" />
-              <p className="text-xs text-slate-500 font-medium">Belum Ada Aktivitas</p>
-              <p className="text-[10px] text-slate-400 max-w-[200px] leading-relaxed mt-1">
-                Catat data penebaran, operasional, sampling, atau panen di menu Siklus untuk melihat riwayat aktivitas di sini secara real-time.
-              </p>
+              <Link href="/siklus">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-all cursor-pointer group">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">Siklus & Catat Benur</p>
+                    <p className="text-[10px] text-slate-500">Mulai sebar bibit & sampling</p>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                </div>
+              </Link>
+
+              <Link href="/pembukuan">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-all cursor-pointer group">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">Pembukuan Keuangan</p>
+                    <p className="text-[10px] text-slate-500">Rekap modal & hasil jual</p>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                </div>
+              </Link>
+
+              <Link href="/laporan">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 transition-all cursor-pointer group">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">Ekspor Laporan PDF/Excel</p>
+                    <p className="text-[10px] text-slate-500">Cetak dokumen pembukuan</p>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                </div>
+              </Link>
             </CardContent>
           </Card>
         </div>

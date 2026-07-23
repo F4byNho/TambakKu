@@ -16,15 +16,35 @@ interface NavbarProps {
 export default function Navbar({ onOpenSidebar, user }: NavbarProps) {
   const pathname = usePathname();
 
-  // Mendapatkan judul halaman berdasarkan rute URL
-  const getPageTitle = () => {
-    if (pathname.startsWith("/dashboard")) return "Dashboard Ringkasan";
-    if (pathname.startsWith("/tambak")) return "Manajemen Tambak";
-    if (pathname.startsWith("/siklus")) return "Siklus Budidaya";
-    if (pathname.startsWith("/pembukuan")) return "Pembukuan Keuangan";
-    if (pathname.startsWith("/laporan")) return "Ekspor Laporan";
-    return "TambakKu";
+  // Mendapatkan judul & deskripsi halaman berdasarkan rute URL
+  const getPageHeader = () => {
+    if (pathname.startsWith("/dashboard")) return {
+      title: "Dashboard Ringkasan",
+      subtitle: "Ringkasan kondisi tambak, modal, dan hasil panen Anda"
+    };
+    if (pathname.startsWith("/tambak")) return {
+      title: "Data Kolam Tambak",
+      subtitle: "Daftar lokasi dan luas kolam tambak udang Anda"
+    };
+    if (pathname.startsWith("/siklus")) return {
+      title: "Siklus Budidaya Udang",
+      subtitle: "Pencatatan benur, biaya harian, sampling berat, dan panen"
+    };
+    if (pathname.startsWith("/pembukuan")) return {
+      title: "Pembukuan Keuangan",
+      subtitle: "Pencatatan uang masuk dari panen dan uang keluar operasional"
+    };
+    if (pathname.startsWith("/laporan")) return {
+      title: "Ekspor & Cetak Laporan",
+      subtitle: "Unduh laporan PDF pencatatan tambak untuk pembukuan"
+    };
+    return {
+      title: "TambakKu",
+      subtitle: "Aplikasi Pencatatan Tambak Udang"
+    };
   };
+
+  const headerInfo = getPageHeader();
 
   // Format tanggal hari ini
   const getFormattedDate = () => {
@@ -37,28 +57,33 @@ export default function Navbar({ onOpenSidebar, user }: NavbarProps) {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-slate-100 bg-white px-4 md:px-6 shrink-0">
-      <div className="flex items-center gap-4">
-        {/* Mobile Toggle Button */}
+    <header className="flex h-16 sm:h-18 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6 shrink-0 sticky top-0 z-30">
+      <div className="flex items-center gap-3 sm:gap-4 py-2">
+        {/* Mobile Toggle Button (Touch Friendly) */}
         <button
           onClick={onOpenSidebar}
-          className="rounded-lg p-2 text-slate-600 hover:bg-slate-50 lg:hidden"
+          className="rounded-xl p-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 lg:hidden shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          title="Buka Menu Navigasi"
+          aria-label="Buka Menu"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-5.5 w-5.5" />
         </button>
         
-        {/* Page Title */}
+        {/* Page Title & Subtitle */}
         <div>
-          <h1 className="text-lg font-bold text-slate-900 md:text-xl">
-            {getPageTitle()}
+          <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+            {headerInfo.title}
           </h1>
-          <p className="hidden text-xs text-slate-500 md:block mt-0.5">
-            {getFormattedDate()}
+          <p className="text-[11px] sm:text-xs text-slate-500 leading-tight mt-0.5 font-normal">
+            {headerInfo.subtitle}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="hidden sm:flex items-center gap-3">
+        <span className="inline-flex items-center rounded-lg bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 border border-slate-200">
+          {getFormattedDate()}
+        </span>
       </div>
     </header>
   );

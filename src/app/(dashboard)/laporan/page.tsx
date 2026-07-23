@@ -461,39 +461,46 @@ export default function LaporanPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">
-          Ekspor Laporan
-        </h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Filter data tambak, siklus, atau tanggal untuk mencetak laporan ke PDF dan Excel.
-        </p>
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-300">
+      {/* Header Banner */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-5 text-slate-900 shadow-2xs">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+            <FileText className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Ekspor Laporan Budidaya</h3>
+            <p className="text-xs text-slate-500 font-normal leading-relaxed mt-0.5">
+              Pilih opsi kolam dan tanggal, lalu klik **"Proses Laporan"** untuk mengunduh file PDF atau Excel.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Filter Card */}
-      <Card className="border-slate-100 shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-sm font-bold text-slate-900">Filter Pencetakan Laporan</CardTitle>
+      <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            Filter Data Laporan
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {isFetchLoading ? (
             <div className="flex h-20 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />
-              <span className="text-xs text-slate-500 font-semibold">Memuat pilihan filter...</span>
+              <span className="text-xs text-slate-500 font-medium">Memuat pilihan kolam tambak...</span>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
                 {/* 1. Tambak */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="tambak">Kolam Tambak</Label>
+                  <Label htmlFor="tambak" className="text-xs font-semibold text-slate-700">Kolam Tambak</Label>
                   <select
                     id="tambak"
                     value={selectedTambakId}
                     onChange={(e) => setSelectedTambakId(e.target.value)}
-                    className="w-full h-10 rounded-xl border border-slate-150 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
                   >
                     <option value="all">Semua Tambak</option>
                     {tambaks.map((t) => (
@@ -506,13 +513,13 @@ export default function LaporanPage() {
 
                 {/* 2. Siklus */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="siklus">Siklus Budidaya</Label>
+                  <Label htmlFor="siklus" className="text-xs font-semibold text-slate-700">Siklus Budidaya</Label>
                   <select
                     id="siklus"
                     value={selectedSiklusId}
                     onChange={(e) => setSelectedSiklusId(e.target.value)}
                     disabled={selectedTambakId === "all"}
-                    className="w-full h-10 rounded-xl border border-slate-150 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50 disabled:text-slate-400"
+                    className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50 disabled:text-slate-400"
                   >
                     <option value="all">Semua Siklus</option>
                     {filteredCycles.map((c) => (
@@ -525,25 +532,25 @@ export default function LaporanPage() {
 
                 {/* 3. Start Date */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="start_date">Dari Tanggal</Label>
+                  <Label htmlFor="start_date" className="text-xs font-semibold text-slate-700">Dari Tanggal</Label>
                   <Input
                     id="start_date"
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="rounded-xl border-slate-150 focus-visible:ring-blue-600"
+                    className="rounded-xl border-slate-200 text-xs h-9"
                   />
                 </div>
 
                 {/* 4. End Date */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="end_date">Sampai Tanggal</Label>
+                  <Label htmlFor="end_date" className="text-xs font-semibold text-slate-700">Sampai Tanggal</Label>
                   <Input
                     id="end_date"
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="rounded-xl border-slate-150 focus-visible:ring-blue-600"
+                    className="rounded-xl border-slate-200 text-xs h-9"
                   />
                 </div>
               </div>
@@ -552,16 +559,16 @@ export default function LaporanPage() {
                 <Button 
                   onClick={handleGenerateReport} 
                   disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 font-semibold rounded-xl shadow-sm px-6 h-10"
+                  className="bg-blue-600 hover:bg-blue-700 font-bold text-xs rounded-xl shadow-xs px-5 h-9 text-white"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4.5 w-4.5 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Memuat Data...
                     </>
                   ) : (
                     <>
-                      <Search className="mr-2 h-4 w-4" /> Proses Laporan
+                      <Search className="mr-1.5 h-4 w-4" /> Proses Laporan
                     </>
                   )}
                 </Button>
@@ -573,24 +580,24 @@ export default function LaporanPage() {
 
       {/* Preview & Download Card */}
       {reportData ? (
-        <Card className="border-slate-100 shadow-sm animate-in fade-in duration-300">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-50 pb-4 gap-4">
+        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white animate-in fade-in duration-300">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 gap-4">
             <div>
-              <CardTitle className="text-sm font-bold text-slate-900">Laporan Siap Diunduh</CardTitle>
-              <CardDescription className="text-xs text-slate-400">Pilih format dokumen di samping untuk menyimpan berkas laporan secara lokal.</CardDescription>
+              <CardTitle className="text-base font-bold text-slate-900">Berkas Laporan Siap Diunduh</CardTitle>
+              <CardDescription className="text-xs text-slate-500 font-normal">Pilih format berkas yang Anda butuhkan (Excel atau PDF).</CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button 
                 onClick={handleExportExcel}
-                className="bg-green-600 hover:bg-green-700 font-bold rounded-xl shadow-sm text-xs h-9.5"
+                className="bg-emerald-600 hover:bg-emerald-700 font-bold text-xs rounded-xl shadow-xs h-9 px-4 text-white"
               >
-                <Download className="mr-2 h-4 w-4" /> Ekspor ke Excel (.xlsx)
+                <Download className="mr-1.5 h-4 w-4" /> Unduh Excel (.xlsx)
               </Button>
               <Button 
                 onClick={handleExportPDF}
-                className="bg-red-600 hover:bg-red-700 font-bold rounded-xl shadow-sm text-xs h-9.5"
+                className="bg-red-600 hover:bg-red-700 font-bold text-xs rounded-xl shadow-xs h-9 px-4 text-white"
               >
-                <Download className="mr-2 h-4 w-4" /> Ekspor ke PDF (.pdf)
+                <Download className="mr-1.5 h-4 w-4" /> Unduh PDF (.pdf)
               </Button>
             </div>
           </CardHeader>
@@ -598,33 +605,33 @@ export default function LaporanPage() {
             <div className="space-y-6">
               {/* Summary stats */}
               <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-xl border border-slate-100 p-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kolam Terfilter</span>
+                <div className="rounded-2xl border-2 border-slate-100 p-4 bg-slate-50/50">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Kolam Terpilih</span>
                   <span className="text-base font-black text-slate-900 mt-1 block">
                     {selectedTambakId === "all" ? `${reportData.tambaks.length} Kolam` : getTambakName(selectedTambakId)}
                   </span>
                 </div>
-                <div className="rounded-xl border border-slate-100 p-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Jumlah Transaksi Biaya</span>
+                <div className="rounded-2xl border-2 border-slate-100 p-4 bg-slate-50/50">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Catatan Biaya</span>
                   <span className="text-base font-black text-slate-900 mt-1 block">
                     {reportData.benur.length + reportData.operasional.length} Catatan
                   </span>
                 </div>
-                <div className="rounded-xl border border-slate-100 p-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Akumulasi Berat Panen</span>
-                  <span className="text-base font-black text-slate-900 mt-1 block">
+                <div className="rounded-2xl border-2 border-slate-100 p-4 bg-slate-50/50">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Total Berat Panen</span>
+                  <span className="text-base font-black text-emerald-700 mt-1 block">
                     {formatNumber(reportData.panen.reduce((s, i) => s + Number(i.berat_panen || 0), 0))} kg
                   </span>
                 </div>
               </div>
 
               {/* Tips banner */}
-              <div className="rounded-xl border border-blue-100 bg-blue-50/20 p-4 flex items-start gap-3">
+              <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/50 p-4 flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="text-xs font-bold text-blue-900">Tips Penggunaan</h4>
-                  <p className="text-[11px] text-blue-800 leading-relaxed mt-1">
-                    Excel direkomendasikan untuk analisis data pembukuan angka dalam jangka panjang di program spreadsheet, sedangkan format PDF paling optimal untuk dokumen print out fisik yang siap ditunjukkan ke pengurus KKN atau penyuluh perikanan.
+                  <h4 className="text-xs font-extrabold text-blue-950">💡 Petunjuk Cetak Laporan</h4>
+                  <p className="text-xs text-blue-800 leading-relaxed font-medium mt-0.5">
+                    Gunakan berkas <strong>PDF</strong> apabila ingin mencetak fisik ke kertas (sebagai laporan ke pengurus KKN/Pemerintah Desa). Gunakan <strong>Excel</strong> jika ingin mengolah angka pembukuan di komputer.
                   </p>
                 </div>
               </div>
@@ -633,11 +640,11 @@ export default function LaporanPage() {
         </Card>
       ) : (
         /* Empty Preview State */
-        <div className="rounded-2xl border border-dashed border-slate-200 py-16 text-center bg-slate-50/20">
-          <FileText className="h-10 w-10 text-slate-300 stroke-1 mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-slate-700">Tentukan Filter Laporan</h3>
-          <p className="text-xs text-slate-400 max-w-xs leading-relaxed mx-auto mt-1">
-            Silakan tentukan tambak, siklus, atau rentang tanggal di atas, kemudian tekan tombol "Proses Laporan" untuk menghasilkan berkas unduhan.
+        <div className="rounded-3xl border-2 border-dashed border-slate-200 py-14 text-center bg-slate-50/40 px-4">
+          <FileText className="h-12 w-12 text-blue-400 stroke-1 mx-auto mb-3" />
+          <h3 className="text-base font-black text-slate-800">Klik "Proses Laporan" Di Atas</h3>
+          <p className="text-xs text-slate-500 max-w-sm leading-relaxed mx-auto mt-1 font-medium">
+            Pilih kolam tambak Anda di atas, lalu tekan tombol biru <strong>"Proses Laporan"</strong> untuk mengunduh laporan PDF atau Excel.
           </p>
         </div>
       )}

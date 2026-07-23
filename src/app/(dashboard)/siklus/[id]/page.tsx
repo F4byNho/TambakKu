@@ -512,9 +512,10 @@ export default function SiklusDetailPage() {
               onClick={() => setSelectedKomoditas(null)}
               variant="outline"
               size="sm"
-              className="text-xs font-bold border-slate-150 text-slate-600 rounded-xl"
+              className="text-xs sm:text-sm font-bold border-2 border-slate-200 text-slate-700 bg-white hover:bg-slate-50 hover:text-blue-700 rounded-xl h-11 px-4 shadow-2xs gap-2 w-full sm:w-auto"
             >
-              ← Kembali ke Ringkasan Siklus
+              <ArrowLeft className="h-4.5 w-4.5 text-slate-500" />
+              Kembali ke Ringkasan Siklus
             </Button>
           </div>
 
@@ -537,77 +538,111 @@ export default function SiklusDetailPage() {
 
             return (
               <div className="space-y-6">
-                {/* Parameter-parameter Dashboard Komoditas */}
+                {/* KPI Cards Grid */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {/* Card 1: Stocking Seed / Seedlings */}
-                  <Card className="border-slate-100 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kConfig.stockingQtyLabel}</CardDescription>
+                  {/* Card 1: Stocking Seed */}
+                  <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        {kConfig.stockingQtyLabel}
+                      </span>
+                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
+                        <Sprout className="h-4 w-4" />
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-lg font-black text-slate-950">{formatNumber(totalSeeds)} {kConfig.stockingQtyUnit}</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                      <p className="text-2xl font-black text-slate-900">{formatNumber(totalSeeds)} <span className="text-xs font-normal text-slate-500">{kConfig.stockingQtyUnit}</span></p>
+                      <p className="text-xs text-slate-400 mt-1">
                         Biaya Bibit: {formatIDR(kBenurCost)}
                       </p>
                     </CardContent>
                   </Card>
 
-                  {/* Card 2: Harvest */}
-                  <Card className="border-slate-100 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kConfig.harvestWeightLabel}</CardDescription>
+                  {/* Card 2: Harvest Weight */}
+                  <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        {kConfig.harvestWeightLabel}
+                      </span>
+                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
+                        <Layers className="h-4 w-4" />
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-lg font-black text-slate-950">{formatNumber(totalHarvestWeight)} kg</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                      <p className="text-2xl font-black text-slate-900">{formatNumber(totalHarvestWeight)} <span className="text-xs font-normal text-slate-500">kg</span></p>
+                      <p className="text-xs text-slate-400 mt-1">
                         Pendapatan Jual: {formatIDR(kRevenue)}
                       </p>
                     </CardContent>
                   </Card>
 
-                  {/* Card 3: Modal */}
-                  <Card className="border-slate-100 shadow-sm">
-                    <CardHeader className="pb-2">
-                      <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Modal Produksi</CardDescription>
+                  {/* Card 3: Modal Produksi */}
+                  <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Total Modal Produksi
+                      </span>
+                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
+                        <DollarSign className="h-4 w-4" />
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-lg font-black text-slate-950">{formatIDR(kModal)}</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                      <p className="text-2xl font-black text-slate-900">{formatIDR(kModal)}</p>
+                      <p className="text-xs text-slate-400 mt-1">
                         Bibit: {formatIDR(kBenurCost)} | Ops: {formatIDR(kOpsCost)}
                       </p>
                     </CardContent>
                   </Card>
 
-                  {/* Card 4: Profit */}
-                  <Card className={`border-slate-100 shadow-sm ${kLaba >= 0 ? "bg-green-50/25" : "bg-red-50/25"}`}>
-                    <CardHeader className="pb-2">
-                      <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Laba Bersih Komoditas</CardDescription>
+                  {/* Card 4: Profit / Laba */}
+                  <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Keuntungan Bersih
+                      </span>
+                      <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+                        <TrendingUp className="h-4 w-4" />
+                      </div>
                     </CardHeader>
                     <CardContent>
-                      <p className={`text-lg font-black ${kLaba >= 0 ? "text-green-700" : "text-red-700"}`}>{formatIDR(kLaba)}</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                      <p className={`text-2xl font-black ${kLaba >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatIDR(kLaba)}</p>
+                      <p className="text-xs text-slate-400 mt-1">
                         Margin: {kRevenue > 0 ? ((kLaba / kRevenue) * 100).toFixed(1) : "0"}%
                       </p>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* MODUL PRODUKSI KOMODITAS (TABS LIST) */}
-                <Tabs defaultValue="benur" className="w-full">
-                  <TabsList className="w-full justify-start rounded-xl bg-slate-100/70 p-1 mb-6 border border-slate-150/20 h-auto overflow-x-auto flex whitespace-nowrap">
-                    <TabsTrigger value="benur" className="rounded-lg px-4 py-2 text-xs font-bold transition-all">
-                      {kConfig.stockingLabel}
-                    </TabsTrigger>
-                    <TabsTrigger value="sampling" className="rounded-lg px-4 py-2 text-xs font-bold transition-all">
-                      {kConfig.growthLabel}
-                    </TabsTrigger>
-                    <TabsTrigger value="panen" className="rounded-lg px-4 py-2 text-xs font-bold transition-all">
-                      {kConfig.harvestLabel}
-                    </TabsTrigger>
-                    <TabsTrigger value="operasional" className="rounded-lg px-4 py-2 text-xs font-bold transition-all">
-                      Biaya Operasional
-                    </TabsTrigger>
-                  </TabsList>
+                {/* Segmented Tab Control */}
+                <Tabs defaultValue="benur" className="w-full space-y-6">
+                  <div className="bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-2xs">
+                    <TabsList className="w-full justify-start bg-transparent p-0 gap-1.5 h-auto overflow-x-auto flex whitespace-nowrap">
+                      <TabsTrigger 
+                        value="benur" 
+                        className="rounded-xl px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-all min-h-[44px] data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-xs text-slate-700 hover:bg-slate-200/60"
+                      >
+                        {kConfig.stockingLabel}
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="sampling" 
+                        className="rounded-xl px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-all min-h-[44px] data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-xs text-slate-700 hover:bg-slate-200/60"
+                      >
+                        {kConfig.growthLabel}
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="panen" 
+                        className="rounded-xl px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-all min-h-[44px] data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-xs text-slate-700 hover:bg-slate-200/60"
+                      >
+                        {kConfig.harvestLabel}
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="operasional" 
+                        className="rounded-xl px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold transition-all min-h-[44px] data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-xs text-slate-700 hover:bg-slate-200/60"
+                      >
+                        Biaya Operasional
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
                   <TabsContent value="benur" className="focus-visible:outline-none">
                     <CycleBenur 
