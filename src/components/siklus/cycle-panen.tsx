@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatIDR, formatNumber, formatDate, formatDateForInput } from "@/lib/utils";
+import { formatIDR, formatNumber, formatDate, formatDateForInput, getTodayDateString } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { panenSchema, type PanenInput } from "@/validators/budidaya";
 import { getCommodityConfig } from "@/lib/commodity-config";
@@ -69,7 +69,7 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
   } = useForm<PanenInput>({
     resolver: zodResolver(panenSchema) as any,
     defaultValues: {
-      tanggal: new Date().toISOString().split("T")[0],
+      tanggal: getTodayDateString(),
       berat_panen: "" as any,
       size: "" as any,
       harga_jual: "" as any,
@@ -112,11 +112,12 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
 
   const fetchBenurLogs = async () => {
     try {
-      const res = await fetch(`/api/benur?siklusId=${siklusId}&komoditasId=${komoditasId}`);
+      const res = await fetch(`/api/benur?siklusId=${siklusId}`);
       if (!res.ok) return;
       const json = await res.json();
       const benurs: any[] = json.data || [];
-      const sumBenur = benurs.reduce((acc, b) => acc + Number(b.jumlah_benur || 0), 0);
+      const filteredBenurs = benurs.filter(b => !komoditasId || !b.komoditas_id || b.komoditas_id === komoditasId);
+      const sumBenur = filteredBenurs.reduce((acc, b) => acc + Number(b.jumlah_benur || 0), 0);
       setTotalBenurTebar(sumBenur);
     } catch (err) {
       console.error("Gagal mengambil data benur tebar:", err);
@@ -167,13 +168,14 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
       toast.success("Catatan hasil panen berhasil disimpan!");
       setIsAddOpen(false);
       resetAdd({
-        tanggal: new Date().toISOString().split("T")[0],
+        tanggal: getTodayDateString(),
         berat_panen: "" as any,
         size: "" as any,
         harga_jual: "" as any,
         komoditas_id: komoditasId,
       });
-      fetchPanenLogs();
+      await fetchBenurLogs();
+      await fetchPanenLogs();
       onDataChange?.();
     } catch (err: any) {
       toast.error(err.message || "Gagal menyimpan data");
@@ -291,10 +293,11 @@ export default function CyclePanen({ siklusId, isCycleActive, komoditasId, jenis
       ) : logs.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {logs.map((log) => {
-            const calculatedUdang = log.jumlah_ekor || (log.size ? log.berat_panen * log.size : undefined);
-            const calculatedSR = log.sr_percent !== undefined 
-              ? log.sr_percent 
-              : (totalBenurTebar > 0 && calculatedUdang ? (calculatedUdang / totalBenurTebar) * 100 : undefined);
+            const calculatedUdang = log.jumlah_ekor || (log.size ? Number(log.berat_panen) * Number(log.size) : undefined);
+            const rawSR = Number(log.sr_percent);
+            const calculatedSR = (log.sr_percent !== undefined && !isNaN(rawSR) && rawSR > 0)
+              ? rawSR 
+              : (totalBenurTebar > 0 && calculatedUdang ? (calculatedUdang / totalBenurTebar) * 100 : (!isNaN(rawSR) ? rawSR : undefined));
 
             return (
               <Card

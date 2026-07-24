@@ -7,7 +7,7 @@ export const benurSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal tidak valid (YYYY-MM-DD)"),
   jenis_udang: z.string().min(1, "Varietas/jenis komoditas wajib diisi"),
   ukuran_PL: z.string().min(1, "Ukuran/metode penanaman wajib diisi"),
-  asal_benih: z.string().min(1, "Asal benih/bibit wajib diisi"),
+  asal_benih: z.string().optional().or(z.literal("")),
   jumlah_benur: z.coerce
     .number({ message: "Jumlah/berat harus berupa angka" })
     .positive("Jumlah/berat harus lebih dari 0"),

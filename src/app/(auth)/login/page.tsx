@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,8 +16,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "account_deleted") {
+      // Tunggu sedikit agar UI toast siap
+      const timer = setTimeout(() => {
+        toast.error("Akun Anda tidak ditemukan di database atau telah dinonaktifkan.", {
+          description: "Silakan hubungi administrator Pokdakan untuk info lebih lanjut.",
+          duration: 6000
+        });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   const {
     register,

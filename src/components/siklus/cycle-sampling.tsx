@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatNumber, formatDate, formatDateForInput } from "@/lib/utils";
+import { formatNumber, formatDate, formatDateForInput, getTodayDateString } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { samplingSchema, type SamplingInput } from "@/validators/budidaya";
 import { getCommodityConfig } from "@/lib/commodity-config";
@@ -79,7 +79,7 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
   } = useForm<SamplingInput>({
     resolver: zodResolver(samplingSchema) as any,
     defaultValues: {
-      tanggal: new Date().toISOString().split("T")[0],
+      tanggal: getTodayDateString(),
       jumlah_udang: jenisKomoditas === "rumput_laut" ? 0 : ("" as any),
       berat_total: "" as any,
       abw: jenisKomoditas === "rumput_laut" ? ("" as any) : 0,
@@ -161,7 +161,7 @@ export default function CycleSampling({ siklusId, isCycleActive, komoditasId, je
       toast.success("Data monitoring berhasil disimpan!");
       setIsAddOpen(false);
       resetAdd({
-        tanggal: new Date().toISOString().split("T")[0],
+        tanggal: getTodayDateString(),
         jumlah_udang: jenisKomoditas === "rumput_laut" ? 0 : ("" as any),
         berat_total: "" as any,
         abw: jenisKomoditas === "rumput_laut" ? ("" as any) : 0,

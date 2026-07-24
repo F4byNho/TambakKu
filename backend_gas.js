@@ -38,31 +38,73 @@ function initDatabase() {
   };
 
   for (const sheetName in tables) {
-    let sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
-      sheet = ss.insertSheet(sheetName);
-      sheet.appendRow(tables[sheetName]);
-      // Format header row (bold, background color)
-      sheet.getRange(1, 1, 1, tables[sheetName].length)
-        .setFontWeight("bold")
-        .setBackground("#e2e8f0")
-        .setHorizontalAlignment("center");
-      sheet.setFrozenRows(1);
-    } else {
-      // Skema Self-Healing: Jika sheet sudah ada, pastikan kolom baru (seperti komoditas_id) ditambahkan jika belum ada
-      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      const targetHeaders = tables[sheetName];
-      targetHeaders.forEach((th) => {
-        if (headers.indexOf(th) === -1) {
-          sheet.insertColumnAfter(sheet.getLastColumn());
-          sheet.getRange(1, sheet.getLastColumn() + 1).setValue(th)
+    fixSheetHeaders(sheetName, tables[sheetName]);
+  }
+}
+
+// Skema Self-Healing Otomatis: Memperbaiki & Merapikan Kolom Header serta Data Jika Ada Pergeseran Kolom
+function fixSheetHeaders(sheetName, targetHeaders) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    sheet.appendRow(targetHeaders);
+    sheet.getRange(1, 1, 1, targetHeaders.length)
+      .setFontWeight("bold")
+      .setBackground("#e2e8f0")
+      .setHorizontalAlignment("center");
+    sheet.setFrozenRows(1);
+    return;
+  }
+
+  // Ensure sheet has enough max columns for targetHeaders
+  const maxCols = sheet.getMaxColumns();
+  if (maxCols < targetHeaders.length) {
+    sheet.insertColumnsAfter(maxCols, targetHeaders.length - maxCols);
+  }
+
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) {
+    sheet.appendRow(targetHeaders);
+    sheet.getRange(1, 1, 1, targetHeaders.length)
+      .setFontWeight("bold")
+      .setBackground("#e2e8f0")
+      .setHorizontalAlignment("center");
+    sheet.setFrozenRows(1);
+    return;
+  }
+
+  const currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+
+  // Check if target headers are present
+  targetHeaders.forEach((th, idx) => {
+    if (currentHeaders.indexOf(th) === -1) {
+      const colIndex = idx + 1;
+      if (colIndex > sheet.getLastColumn()) {
+        sheet.getRange(1, colIndex).setValue(th)
+          .setFontWeight("bold")
+          .setBackground("#e2e8f0")
+          .setHorizontalAlignment("center");
+      } else {
+        const targetCell = sheet.getRange(1, colIndex);
+        if (String(targetCell.getValue()).trim() === "") {
+          targetCell.setValue(th)
+            .setFontWeight("bold")
+            .setBackground("#e2e8f0")
+            .setHorizontalAlignment("center");
+        } else {
+          const nextCol = sheet.getLastColumn() + 1;
+          if (sheet.getMaxColumns() < nextCol) {
+            sheet.insertColumnAfter(sheet.getMaxColumns());
+          }
+          sheet.getRange(1, nextCol).setValue(th)
             .setFontWeight("bold")
             .setBackground("#e2e8f0")
             .setHorizontalAlignment("center");
         }
-      });
+      }
     }
-  }
+  });
 }
 
 // Fungsi pembantu untuk membaca seluruh baris sebagai JSON Object array
@@ -74,13 +116,18 @@ function readSheetData(sheetName) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return [];
   
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const values = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return [];
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+  const values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   
   return values.map((row) => {
     const obj = {};
     headers.forEach((header, index) => {
-      obj[header] = row[index];
+      if (header) {
+        obj[header] = row[index];
+      }
     });
     return obj;
   });
@@ -102,6 +149,23 @@ function findRowIndexById(sheet, idColumnName, idValue) {
     }
   }
   return -1;
+}
+
+// Helper untuk menambahkan baris data sesuai pencocokan nama header
+function appendRowByHeaders(sheetName, dataObject) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return;
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return;
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  
+  const rowData = headers.map(header => {
+    const key = String(header).trim();
+    return (dataObject[key] !== undefined && dataObject[key] !== null) ? dataObject[key] : "";
+  });
+  
+  sheet.appendRow(rowData);
 }
 
 // --- CONTROLLER GET ---
@@ -336,9 +400,13 @@ function doPost(e) {
         return deleteRowData("Komoditas", "komoditas_id", data.komoditas_id);
         
       case "createBenur":
-        const benurSheet = ss.getSheetByName("Penebaran Benur");
         const totalHargaBenur = Number(data.jumlah_benur) * Number(data.harga_per_ekor);
-        benurSheet.appendRow([
+        const benurSheet = ss.getSheetByName("Penebaran Benur");
+        
+        const lastCol = benurSheet.getLastColumn();
+        const headers = benurSheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
+        
+        const rowData = [
           data.benur_id,
           data.siklus_id,
           data.user_id,
@@ -350,8 +418,20 @@ function doPost(e) {
           totalHargaBenur,
           data.komoditas_id || "",
           data.asal_benih || ""
-        ]);
-        return jsonResponse({ success: true, message: "Pencatatan bibit berhasil disimpan", total_harga: totalHargaBenur });
+        ];
+        
+        benurSheet.appendRow(rowData);
+        
+        return jsonResponse({ 
+          success: true, 
+          message: "Pencatatan bibit berhasil disimpan", 
+          total_harga: totalHargaBenur,
+          debug: {
+            received_data: data,
+            headers: headers,
+            rowData: rowData
+          }
+        });
         
       case "updateBenur":
         data.total_harga = Number(data.jumlah_benur) * Number(data.harga_per_ekor);
@@ -361,8 +441,10 @@ function doPost(e) {
         return deleteRowData("Penebaran Benur", "benur_id", data.benur_id);
         
       case "createOperasional":
-        const opSheet = ss.getSheetByName("Operasional");
-        opSheet.appendRow([
+        const operasionalSheet = ss.getSheetByName("Operasional");
+        // Tulis langsung dengan posisi kolom eksplisit
+        // Header order: operasional_id, siklus_id, user_id, tanggal, kategori, nominal, keterangan, komoditas_id
+        operasionalSheet.appendRow([
           data.operasional_id,
           data.siklus_id,
           data.user_id,
@@ -373,6 +455,7 @@ function doPost(e) {
           data.komoditas_id || ""
         ]);
         return jsonResponse({ success: true, message: "Biaya operasional berhasil dicatat" });
+
         
       case "updateOperasional":
         return updateRowData("Operasional", "operasional_id", data.operasional_id, data);
@@ -381,7 +464,6 @@ function doPost(e) {
         return deleteRowData("Operasional", "operasional_id", data.operasional_id);
         
       case "createSampling":
-        const samplingSheet = ss.getSheetByName("Sampling");
         let abwVal = Number(data.abw || 0);
         let sizeVal = Number(data.size || 0);
         
@@ -391,6 +473,10 @@ function doPost(e) {
           sizeVal = abwVal > 0 ? 1000 / abwVal : 0;
         }
         
+        const samplingSheet = ss.getSheetByName("Sampling");
+        // Tulis langsung dengan posisi kolom eksplisit
+        // Header order: sampling_id, siklus_id, user_id, tanggal_sampling,
+        //               jumlah_udang_sampling, berat_total_sampling, abw, size, komoditas_id
         samplingSheet.appendRow([
           data.sampling_id,
           data.siklus_id,
@@ -419,8 +505,24 @@ function doPost(e) {
         return deleteRowData("Sampling", "sampling_id", data.sampling_id);
         
       case "createPanen":
-        const panenSheet = ss.getSheetByName("Panen");
         const pendapatan = Number(data.berat_panen) * Number(data.harga_jual);
+        let sizeInput = Number(data.size || 0);
+        let jumlahEkorInput = Number(data.jumlah_ekor || 0);
+        if (jumlahEkorInput === 0 && sizeInput > 0 && Number(data.berat_panen) > 0) {
+          jumlahEkorInput = Number(data.berat_panen) * sizeInput;
+        }
+        let srPercentInput = Number(data.sr_percent || 0);
+        if (srPercentInput === 0 && jumlahEkorInput > 0) {
+          const benurList = readSheetData("Penebaran Benur").filter(b => b.siklus_id === data.siklus_id && (!data.komoditas_id || b.komoditas_id === data.komoditas_id));
+          const totalBenur = benurList.reduce((acc, b) => acc + Number(b.jumlah_benur || 0), 0);
+          if (totalBenur > 0) {
+            srPercentInput = Number(((jumlahEkorInput / totalBenur) * 100).toFixed(2));
+          }
+        }
+        const panenSheet = ss.getSheetByName("Panen");
+        // Tulis langsung dengan posisi kolom eksplisit
+        // Header order: panen_id, siklus_id, user_id, tanggal_panen, berat_panen,
+        //               harga_jual, pendapatan, komoditas_id, size, jumlah_ekor, sr_percent
         panenSheet.appendRow([
           data.panen_id,
           data.siklus_id,
@@ -430,14 +532,24 @@ function doPost(e) {
           Number(data.harga_jual),
           pendapatan,
           data.komoditas_id || "",
-          Number(data.size || 0),
-          Number(data.jumlah_ekor || 0),
-          Number(data.sr_percent || 0)
+          sizeInput,
+          jumlahEkorInput,
+          srPercentInput
         ]);
-        return jsonResponse({ success: true, message: "Data panen berhasil dicatat", pendapatan });
+        return jsonResponse({ success: true, message: "Data panen berhasil dicatat", pendapatan, sr_percent: srPercentInput });
         
       case "updatePanen":
         data.pendapatan = Number(data.berat_panen) * Number(data.harga_jual);
+        if ((!data.jumlah_ekor || Number(data.jumlah_ekor) === 0) && Number(data.size || 0) > 0 && Number(data.berat_panen || 0) > 0) {
+          data.jumlah_ekor = Number(data.berat_panen) * Number(data.size);
+        }
+        if ((!data.sr_percent || Number(data.sr_percent) === 0) && Number(data.jumlah_ekor || 0) > 0) {
+          const benurList = readSheetData("Penebaran Benur").filter(b => b.siklus_id === data.siklus_id && (!data.komoditas_id || b.komoditas_id === data.komoditas_id));
+          const totalBenur = benurList.reduce((acc, b) => acc + Number(b.jumlah_benur || 0), 0);
+          if (totalBenur > 0) {
+            data.sr_percent = Number(((Number(data.jumlah_ekor) / totalBenur) * 100).toFixed(2));
+          }
+        }
         return updateRowData("Panen", "panen_id", data.panen_id, data);
         
       case "deletePanen":

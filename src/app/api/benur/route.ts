@@ -69,7 +69,12 @@ export async function POST(req: Request) {
       ...result.data,
     };
     
+    console.log("DEBUG: benur API received body:", body);
+    console.log("DEBUG: benur API validated data:", result.data);
+    console.log("DEBUG: benur API sending payload to GAS:", payload);
+    
     const res = await postToGAS("createBenur", payload);
+    console.log("DEBUG: GAS response:", res);
     
     if (res.error) {
       return NextResponse.json({ error: res.error }, { status: 400 });

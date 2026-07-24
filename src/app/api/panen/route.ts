@@ -71,7 +71,14 @@ export async function POST(req: Request) {
       siklus_id: siklusId,
       user_id: session.userId,
       tanggal_panen: result.data.tanggal,
-      ...result.data,
+      berat_panen: result.data.berat_panen,
+      harga_jual: result.data.harga_jual,
+      size: result.data.size ?? 0,
+      komoditas_id: result.data.komoditas_id,
+      // Calculated fields passed from frontend (may override GAS auto-calculation)
+      jumlah_ekor: Number(rest.jumlah_ekor || 0),
+      pendapatan: Number(rest.pendapatan || 0),
+      sr_percent: Number(rest.sr_percent || 0),
     };
     
     const res = await postToGAS("createPanen", payload);

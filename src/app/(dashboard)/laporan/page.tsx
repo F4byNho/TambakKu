@@ -67,6 +67,26 @@ export default function LaporanPage() {
   const [activeTab, setActiveTab] = useState<"pokdakan" | "siklus" | "ops">("pokdakan");
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tab = searchParams.get("tab");
+      if (tab && ["pokdakan", "siklus", "ops"].includes(tab)) {
+        setActiveTab(tab as any);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (value: "pokdakan" | "siklus" | "ops") => {
+    setActiveTab(value);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", value);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState(null, "", newUrl);
+    }
+  };
+
+  useEffect(() => {
     fetchFilterOptions();
   }, [activeAnggota, activeTambak]);
 
@@ -1037,7 +1057,7 @@ export default function LaporanPage() {
                 {/* Preview Tabs */}
                 <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
                   <button
-                    onClick={() => setActiveTab("pokdakan")}
+                    onClick={() => handleTabChange("pokdakan")}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       activeTab === "pokdakan"
                         ? "bg-white text-slate-900 shadow-2xs"
@@ -1047,7 +1067,7 @@ export default function LaporanPage() {
                     Data Budidaya Pokdakan
                   </button>
                   <button
-                    onClick={() => setActiveTab("siklus")}
+                    onClick={() => handleTabChange("siklus")}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       activeTab === "siklus"
                         ? "bg-white text-slate-900 shadow-2xs"
@@ -1057,7 +1077,7 @@ export default function LaporanPage() {
                     Ringkasan Siklus
                   </button>
                   <button
-                    onClick={() => setActiveTab("ops")}
+                    onClick={() => handleTabChange("ops")}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       activeTab === "ops"
                         ? "bg-white text-slate-900 shadow-2xs"

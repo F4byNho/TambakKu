@@ -41,6 +41,19 @@ export default function PembukuanPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const tab = searchParams.get("tab") === "hpp" ? "hpp" : "pembukuan";
+    setActiveTab(tab);
+  }, [searchParams]);
+
+  const handleTabChange = (value: "pembukuan" | "hpp") => {
+    setActiveTab(value);
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", value);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", newUrl);
+  };
+
+  useEffect(() => {
     fetchLedgerData();
   }, [activeTambak, activeAnggota]);
 
@@ -74,7 +87,7 @@ export default function PembukuanPage() {
       {/* Top Segmented Tab Control */}
       <div className="bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-2xs flex gap-2">
         <button
-          onClick={() => setActiveTab("pembukuan")}
+          onClick={() => handleTabChange("pembukuan")}
           className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all min-h-[44px] ${
             activeTab === "pembukuan"
               ? "bg-white text-blue-700 shadow-xs border border-blue-100"
@@ -86,7 +99,7 @@ export default function PembukuanPage() {
         </button>
 
         <button
-          onClick={() => setActiveTab("hpp")}
+          onClick={() => handleTabChange("hpp")}
           className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold transition-all min-h-[44px] ${
             activeTab === "hpp"
               ? "bg-white text-blue-700 shadow-xs border border-blue-100"

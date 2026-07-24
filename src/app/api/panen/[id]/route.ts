@@ -27,7 +27,13 @@ export async function PUT(
     const payload = {
       panen_id: id,
       tanggal_panen: result.data.tanggal,
-      ...result.data,
+      berat_panen: result.data.berat_panen,
+      harga_jual: result.data.harga_jual,
+      size: result.data.size ?? 0,
+      komoditas_id: result.data.komoditas_id,
+      jumlah_ekor: Number(body.jumlah_ekor || 0),
+      pendapatan: Number(body.pendapatan || 0),
+      sr_percent: Number(body.sr_percent || 0),
     };
     
     const res = await postToGAS("updatePanen", payload);

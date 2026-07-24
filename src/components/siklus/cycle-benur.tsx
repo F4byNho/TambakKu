@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatIDR, formatNumber, formatDate, formatDateForInput } from "@/lib/utils";
+import { formatIDR, formatNumber, formatDate, formatDateForInput, getTodayDateString } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { benurSchema, type BenurInput } from "@/validators/budidaya";
 import { getCommodityConfig } from "@/lib/commodity-config";
@@ -71,7 +71,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
   } = useForm<BenurInput>({
     resolver: zodResolver(benurSchema) as any,
     defaultValues: {
-      tanggal_tebar: new Date().toISOString().split("T")[0],
+      tanggal_tebar: getTodayDateString(),
       jenis_udang: defaultVarietas,
       ukuran_PL: "",
       asal_benih: "",
@@ -103,7 +103,7 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
   useEffect(() => {
     fetchBenurLogs();
     resetAdd({
-      tanggal_tebar: new Date().toISOString().split("T")[0],
+      tanggal_tebar: getTodayDateString(),
       jenis_udang: defaultVarietas,
       ukuran_PL: "",
       asal_benih: "",
@@ -142,9 +142,10 @@ export default function CycleBenur({ siklusId, isCycleActive, komoditasId, jenis
       toast.success("Catatan penebaran/penanaman berhasil disimpan!");
       setIsAddOpen(false);
       resetAdd({
-        tanggal_tebar: new Date().toISOString().split("T")[0],
+        tanggal_tebar: getTodayDateString(),
         jenis_udang: defaultVarietas,
         ukuran_PL: "",
+        asal_benih: "",
         jumlah_benur: "" as any,
         harga_per_ekor: "" as any,
         komoditas_id: komoditasId,

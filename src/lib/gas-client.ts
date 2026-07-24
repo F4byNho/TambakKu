@@ -32,11 +32,14 @@ export async function fetchFromGAS<T = any>(
       cache: "no-store",
     });
 
-    if (!res.ok) {
-      throw new Error(`Kesalahan fetch GAS: ${res.statusText} (${res.status})`);
+    const text = await res.text();
+    let json: any;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Respon GAS bukan format JSON valid: ${text.substring(0, 120)}`);
     }
 
-    const json = await res.json();
     if (json.error) {
       return { data: null, error: json.error };
     }
@@ -77,11 +80,18 @@ export async function postToGAS<T = any>(
       cache: "no-store",
     });
 
-    if (!res.ok) {
-      throw new Error(`Kesalahan post GAS: ${res.statusText} (${res.status})`);
+    const text = await res.text();
+    let json: any;
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      throw new Error(`Respon GAS bukan format JSON valid: ${text.substring(0, 120)}`);
     }
 
-    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error || `Kesalahan post GAS: ${res.statusText} (${res.status})`);
+    }
+
     return json;
   } catch (error: any) {
     console.error("Fungsi postToGAS bermasalah:", error);

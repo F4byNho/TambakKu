@@ -72,24 +72,29 @@ export function formatDateForInput(dateStr: any): string {
   const str = String(dateStr).trim();
   if (!str) return getTodayDateString();
 
-  // Match DD/MM/YYYY or DD-MM-YYYY
+  // Match DD/MM/YYYY or DD-MM-YYYY → convert to YYYY-MM-DD
   const matchesDMY = str.match(/^(0?[1-9]|[12]\d|3[01])[-/\.](0?[1-9]|1[0-2])[-/\.](\d{4})$/);
   if (matchesDMY) {
     const [, day, month, year] = matchesDMY;
     return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   }
 
-  // Match YYYY-MM-DD...
-  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-    return str.substring(0, 10);
+  // Match YYYY-MM-DD (already correct format, return as-is to avoid timezone shift)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return str;
   }
 
-  const d = new Date(str);
-  if (!isNaN(d.getTime())) {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+  // Match YYYY-MM-DDTHH:mm... (ISO datetime) — extract date part using local time
+  if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    // fallback: take first 10 chars
+    return str.substring(0, 10);
   }
 
   return getTodayDateString();

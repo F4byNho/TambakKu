@@ -71,9 +71,9 @@ export default function SiklusDetailPage() {
   const [cycle, setCycle] = useState<SiklusItem | null>(null);
   const [tambakName, setTambakName] = useState("Kolam");
   const [commodities, setCommodities] = useState<KomoditasItem[]>([]);
-  const [selectedKomoditas, setSelectedKomoditas] = useState<KomoditasItem | null>(null);
   const [cycleTab, setCycleTab] = useState<"komoditas" | "pengeluaran">("komoditas");
   const [isLoading, setIsLoading] = useState(true);
+
 
   // States untuk pembukuan keuangan global
   const [benurLogs, setBenurLogs] = useState<any[]>([]);
@@ -139,7 +139,7 @@ export default function SiklusDetailPage() {
       if (resOperasional.ok) setOperasionalLogs((await resOperasional.json()).data || []);
       if (resPanen.ok) setPanenLogs((await resPanen.json()).data || []);
 
-      // Ambil komoditas aktif
+       // Ambil komoditas aktif
       if (resKomoditas.ok) {
         const komoditasData = (await resKomoditas.json()).data || [];
         setCommodities(komoditasData);
@@ -209,10 +209,6 @@ export default function SiklusDetailPage() {
       setIsDeleteKomoditasOpen(false);
       setKomoditasToDelete(null);
       
-      if (selectedKomoditas?.komoditas_id === komoditasToDelete.komoditas_id) {
-        setSelectedKomoditas(null);
-      }
-      
       fetchCycleData();
     } catch (err: any) {
       toast.error(err.message || "Gagal menghapus komoditas");
@@ -245,43 +241,24 @@ export default function SiklusDetailPage() {
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Back & Breadcrumbs */}
       <div className="flex items-center gap-4">
-        {selectedKomoditas ? (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setSelectedKomoditas(null)} 
-            className="rounded-xl border border-slate-150 hover:bg-slate-50 h-9 w-9"
-          >
+        <Link href="/siklus">
+          <Button variant="ghost" size="icon" className="rounded-xl border border-slate-150 hover:bg-slate-50 h-9 w-9">
             <ArrowLeft className="h-4.5 w-4.5" />
           </Button>
-        ) : (
-          <Link href="/siklus">
-            <Button variant="ghost" size="icon" className="rounded-xl border border-slate-150 hover:bg-slate-50 h-9 w-9">
-              <ArrowLeft className="h-4.5 w-4.5" />
-            </Button>
-          </Link>
-        )}
+        </Link>
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Siklus Budidaya</span>
             <span className="text-xs text-slate-300">/</span>
             <span className="text-xs font-bold text-slate-500">{tambakName}</span>
-            {selectedKomoditas && (
-              <>
-                <span className="text-xs text-slate-300">/</span>
-                <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">{selectedKomoditas.nama_komoditas}</span>
-              </>
-            )}
           </div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900 mt-0.5">
-            {tambakName} - Siklus #{cycle.nomor_siklus} {selectedKomoditas ? `(${selectedKomoditas.nama_komoditas})` : ""}
+            {tambakName} - Siklus #{cycle.nomor_siklus}
           </h2>
         </div>
       </div>
 
-      {!selectedKomoditas ? (
-        /* ==================== DASHBOARD UTAMA SIKLUS (GABUNGAN) ==================== */
-        <div className="space-y-8">
+      <div className="space-y-8">
           {/* Ringkasan Ringkas Global */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
@@ -492,14 +469,13 @@ export default function SiklusDetailPage() {
                           </div>
 
                           {/* Footer Action Button */}
-                          <div className="pt-3">
-                            <Button
-                              onClick={() => setSelectedKomoditas(k)}
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs h-10 px-4 shadow-2xs gap-1.5"
-                            >
-                              Masuk Dashboard <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
+                            <Link href={`/siklus/${id}/komoditas/${k.komoditas_id}`} className="w-full">
+                              <Button
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs h-10 px-4 shadow-2xs gap-1.5"
+                              >
+                                Masuk Dashboard <ArrowRight className="h-3.5 w-3.5" />
+                              </Button>
+                            </Link>
                         </Card>
                       );
                     });
@@ -600,182 +576,6 @@ export default function SiklusDetailPage() {
             </div>
           )}
         </div>
-      ) : (
-        /* ==================== DASHBOARD KHUSUS KOMODITAS (KULTIVAN) ==================== */
-        <div className="space-y-6">
-
-          {(() => {
-            const kConfig = getCommodityConfig(selectedKomoditas.jenis_komoditas);
-            
-            // Perhitungan data khusus komoditas terpilih
-            const kBenurs = benurLogs.filter(b => b.komoditas_id === selectedKomoditas.komoditas_id);
-            const kOps = operasionalLogs.filter(o => o.komoditas_id === selectedKomoditas.komoditas_id);
-            const kPanens = panenLogs.filter(p => p.komoditas_id === selectedKomoditas.komoditas_id);
-            
-            const kBenurCost = kBenurs.reduce((sum, b) => sum + Number(b.total_harga || 0), 0);
-            const kOpsCost = kOps.reduce((sum, o) => sum + Number(o.nominal || 0), 0);
-            const kModal = kBenurCost + kOpsCost;
-            const kRevenue = kPanens.reduce((sum, p) => sum + Number(p.pendapatan || 0), 0);
-            const kLaba = kRevenue - kModal;
-
-            const totalSeeds = kBenurs.reduce((sum, b) => sum + Number(b.jumlah_benur || 0), 0);
-            const totalHarvestWeight = kPanens.reduce((sum, p) => sum + Number(p.berat_panen || 0), 0);
-
-            return (
-              <div className="space-y-6">
-                {/* KPI Cards Grid */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {/* Card 1: Stocking Seed */}
-                  <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        {kConfig.stockingQtyLabel}
-                      </span>
-                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
-                        <Sprout className="h-4 w-4" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-black text-slate-900">{formatNumber(totalSeeds)} <span className="text-xs font-normal text-slate-500">{kConfig.stockingQtyUnit}</span></p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Biaya Bibit: {formatIDR(kBenurCost)}
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Card 2: Harvest Weight */}
-                  <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        {kConfig.harvestWeightLabel}
-                      </span>
-                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
-                        <Layers className="h-4 w-4" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-black text-slate-900">{formatNumber(totalHarvestWeight)} <span className="text-xs font-normal text-slate-500">kg</span></p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Pendapatan Jual: {formatIDR(kRevenue)}
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Card 3: Modal Produksi */}
-                  <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        Total Modal Produksi
-                      </span>
-                      <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
-                        <DollarSign className="h-4 w-4" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-black text-slate-900">{formatIDR(kModal)}</p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Bibit: {formatIDR(kBenurCost)} | Ops: {formatIDR(kOpsCost)}
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Card 4: Profit / Laba */}
-                  <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        Keuntungan Bersih
-                      </span>
-                      <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-                        <TrendingUp className="h-4 w-4" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className={`text-2xl font-black ${kLaba >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatIDR(kLaba)}</p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Margin: {kRevenue > 0 ? ((kLaba / kRevenue) * 100).toFixed(1) : "0"}%
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Segmented Tab Control */}
-                <Tabs defaultValue="benur" className="w-full space-y-6">
-                  <TabsList className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 bg-transparent p-0 w-full h-auto">
-                    <TabsTrigger
-                      value="benur"
-                      className="flex items-center justify-center rounded-2xl px-3 py-3.5 border-2 border-slate-200 bg-white text-slate-500 font-bold transition-all hover:border-blue-300 hover:text-slate-700 data-[state=active]:!bg-blue-50/90 data-[state=active]:!border-blue-400 data-[state=active]:!text-slate-900 data-[state=active]:shadow-xs text-xs sm:text-sm text-center leading-tight min-h-[48px]"
-                    >
-                      {kConfig.stockingLabel}
-                    </TabsTrigger>
-
-                    <TabsTrigger
-                      value="sampling"
-                      className="flex items-center justify-center rounded-2xl px-3 py-3.5 border-2 border-slate-200 bg-white text-slate-500 font-bold transition-all hover:border-blue-300 hover:text-slate-700 data-[state=active]:!bg-blue-50/90 data-[state=active]:!border-blue-400 data-[state=active]:!text-slate-900 data-[state=active]:shadow-xs text-xs sm:text-sm text-center leading-tight min-h-[48px]"
-                    >
-                      {kConfig.growthLabel}
-                    </TabsTrigger>
-
-                    <TabsTrigger
-                      value="panen"
-                      className="flex items-center justify-center rounded-2xl px-3 py-3.5 border-2 border-slate-200 bg-white text-slate-500 font-bold transition-all hover:border-blue-300 hover:text-slate-700 data-[state=active]:!bg-blue-50/90 data-[state=active]:!border-blue-400 data-[state=active]:!text-slate-900 data-[state=active]:shadow-xs text-xs sm:text-sm text-center leading-tight min-h-[48px]"
-                    >
-                      {kConfig.harvestLabel}
-                    </TabsTrigger>
-
-                    <TabsTrigger
-                      value="operasional"
-                      className="flex items-center justify-center rounded-2xl px-3 py-3.5 border-2 border-slate-200 bg-white text-slate-500 font-bold transition-all hover:border-blue-300 hover:text-slate-700 data-[state=active]:!bg-blue-50/90 data-[state=active]:!border-blue-400 data-[state=active]:!text-slate-900 data-[state=active]:shadow-xs text-xs sm:text-sm text-center leading-tight min-h-[48px]"
-                    >
-                      Biaya Pengeluaran
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="benur" className="focus-visible:outline-none">
-                    <CycleBenur 
-                      siklusId={cycle.siklus_id} 
-                      isCycleActive={cycle.status === "aktif" && selectedKomoditas.status === "aktif"} 
-                      komoditasId={selectedKomoditas.komoditas_id}
-                      jenisKomoditas={selectedKomoditas.jenis_komoditas}
-                      namaKomoditas={selectedKomoditas.nama_komoditas}
-                      onDataChange={fetchCycleData}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="sampling" className="focus-visible:outline-none">
-                    <CycleSampling 
-                      siklusId={cycle.siklus_id} 
-                      isCycleActive={cycle.status === "aktif" && selectedKomoditas.status === "aktif"} 
-                      komoditasId={selectedKomoditas.komoditas_id}
-                      jenisKomoditas={selectedKomoditas.jenis_komoditas}
-                      onDataChange={fetchCycleData}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="panen" className="focus-visible:outline-none">
-                    <CyclePanen 
-                      siklusId={cycle.siklus_id} 
-                      isCycleActive={cycle.status === "aktif" && selectedKomoditas.status === "aktif"} 
-                      komoditasId={selectedKomoditas.komoditas_id}
-                      jenisKomoditas={selectedKomoditas.jenis_komoditas}
-                      onDataChange={fetchCycleData}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="operasional" className="focus-visible:outline-none">
-                    <CycleOperasional 
-                      siklusId={cycle.siklus_id} 
-                      isCycleActive={cycle.status === "aktif" && selectedKomoditas.status === "aktif"} 
-                      komoditasId={selectedKomoditas.komoditas_id}
-                      jenisKomoditas={selectedKomoditas.jenis_komoditas}
-                      onDataChange={fetchCycleData}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </div>
-            );
-          })()}
-        </div>
-      )}
 
       {/* dialogs */}
 

@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatIDR, formatNumber, formatDate, formatDateForInput } from "@/lib/utils";
+import { formatIDR, formatNumber, formatDate, formatDateForInput, getTodayDateString } from "@/lib/utils";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import { operasionalSchema, type OperasionalInput } from "@/validators/budidaya";
 import { getCommodityConfig } from "@/lib/commodity-config";
@@ -72,7 +72,7 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
   } = useForm<OperasionalInput>({
     resolver: zodResolver(operasionalSchema) as any,
     defaultValues: {
-      tanggal: new Date().toISOString().split("T")[0],
+      tanggal: getTodayDateString(),
       kategori: "",
       nominal: "" as any,
       keterangan: "",
@@ -133,7 +133,7 @@ export default function CycleOperasional({ siklusId, isCycleActive, komoditasId,
       toast.success("Biaya pengeluaran berhasil dicatat!");
       setIsAddOpen(false);
       resetAdd({
-        tanggal: new Date().toISOString().split("T")[0],
+        tanggal: getTodayDateString(),
         kategori: "",
         nominal: "" as any,
         keterangan: "",
