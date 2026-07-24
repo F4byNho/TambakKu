@@ -57,9 +57,13 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     setIsLoadingData(true);
     try {
-      const url = activeTambak 
-        ? `/api/dashboard?tambakId=${activeTambak.tambak_id}`
-        : `/api/dashboard`;
+      let url = `/api/dashboard`;
+      if (activeTambak) {
+        url += `?tambakId=${activeTambak.tambak_id}`;
+      } else if (activeAnggota) {
+        // Mode personal: filter berdasarkan anggotaId agar data tidak bocor ke pokdakan
+        url += `?anggotaId=${activeAnggota.anggota_id}`;
+      }
       const res = await fetch(url);
       if (!res.ok) throw new Error("Gagal memuat data dashboard");
       const json = await res.json();
@@ -84,14 +88,12 @@ export default function DashboardPage() {
 
   const metrics = dashboardData?.metrics || {};
 
-  // Total Luas Tambak
-  const totalLuasAll = tambakList.reduce((sum, t) => sum + Number(t.luas_tambak || 0), 0);
-
   // ─── KONDISI 1: DASHBOARD PERSONAL (Context Mode per Anggota / Tambak) ───────
   if (activeAnggota || activeTambak) {
+    // Hanya tampilkan tambak milik anggota yang aktif
     const activeMemberTambaks = activeAnggota 
       ? tambakList.filter(t => t.anggota_id === activeAnggota.anggota_id)
-      : [];
+      : (activeTambak ? [activeTambak] : []);
 
     return (
       <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-300">
@@ -314,6 +316,9 @@ export default function DashboardPage() {
   }
 
   // ─── KONDISI 2: DASHBOARD POKDAKAN OVERVIEW (Semua Anggota & Tambak) ──────────
+  // Total Luas hanya dihitung di sini karena mode pokdakan menampilkan semua tambak
+  const totalLuasAll = tambakList.reduce((sum, t) => sum + Number(t.luas_tambak || 0), 0);
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-300">
       {/* Top Header Title */}

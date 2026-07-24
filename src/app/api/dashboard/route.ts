@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
 import { fetchFromGAS } from "@/lib/gas-client";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
@@ -10,7 +10,15 @@ export async function GET() {
     }
     
     const { userId } = session;
-    const res = await fetchFromGAS<any>("getDashboardData", { userId });
+    const { searchParams } = new URL(req.url);
+    const tambakId = searchParams.get("tambakId") || "";
+    const anggotaId = searchParams.get("anggotaId") || "";
+
+    const params: Record<string, string> = { userId };
+    if (tambakId) params.tambakId = tambakId;
+    if (anggotaId) params.anggotaId = anggotaId;
+
+    const res = await fetchFromGAS<any>("getDashboardData", params);
     
     if (res.error) {
       return NextResponse.json({ error: res.error }, { status: 400 });

@@ -28,6 +28,7 @@ interface TambakItem {
   lokasi: string;
   luas_tambak: number;
   nama_anggota?: string;
+  anggota_id?: string;
 }
 
 interface SiklusItem {
@@ -50,7 +51,7 @@ interface LaporanDataset {
 }
 
 export default function LaporanPage() {
-  const { activeTambak, activeAnggota } = usePokdakan();
+  const { activeTambak, activeAnggota, anggotaList } = usePokdakan();
   const [tambaks, setTambaks] = useState<TambakItem[]>([]);
   const [cycles, setCycles] = useState<SiklusItem[]>([]);
   const [filteredCycles, setFilteredCycles] = useState<SiklusItem[]>([]);
@@ -107,10 +108,14 @@ export default function LaporanPage() {
       const urlTambak = activeAnggota 
         ? `/api/tambak?anggotaId=${activeAnggota.anggota_id}`
         : "/api/tambak";
+
+      const urlSiklus = activeAnggota
+        ? `/api/siklus?anggotaId=${activeAnggota.anggota_id}`
+        : "/api/siklus";
         
       const [resTambak, resSiklus] = await Promise.all([
         fetch(urlTambak),
-        fetch("/api/siklus"),
+        fetch(urlSiklus),
       ]);
       const jsonTambak = await resTambak.json();
       const jsonSiklus = await resSiklus.json();
@@ -128,6 +133,10 @@ export default function LaporanPage() {
 
       if (activeTambak && fetchedTambaks.some(t => t.tambak_id === activeTambak.tambak_id)) {
         setSelectedTambakId(activeTambak.tambak_id);
+      } else if (activeAnggota && fetchedTambaks.length > 0) {
+        setSelectedTambakId(fetchedTambaks[0].tambak_id);
+      } else if (activeAnggota && fetchedTambaks.length === 0) {
+        setSelectedTambakId("none");
       } else if (fetchedTambaks.length === 1) {
         setSelectedTambakId(fetchedTambaks[0].tambak_id);
       }
@@ -142,7 +151,12 @@ export default function LaporanPage() {
     setIsLoading(true);
     try {
       const query = new URLSearchParams();
-      if (selectedTambakId !== "all") query.append("tambakId", selectedTambakId);
+      if (selectedTambakId !== "all") {
+        query.append("tambakId", selectedTambakId);
+      } else if (activeAnggota) {
+        // Mode personal: filter laporan berdasarkan anggotaId agar tidak bocor ke data pokdakan
+        query.append("anggotaId", activeAnggota.anggota_id);
+      }
       if (selectedSiklusId !== "all") query.append("siklusId", selectedSiklusId);
 
       const res = await fetch(`/api/laporan?${query.toString()}`);
@@ -290,8 +304,8 @@ export default function LaporanPage() {
 
       let commoditiesToDisplay = Array.from(uniqueCommodityMap.values());
       if (!commoditiesToDisplay || commoditiesToDisplay.length === 0) {
-        const types = Array.from(new Set(filteredBenurs.map(b => b.jenis_udang || "Udang Vaname")));
-        commoditiesToDisplay = (types.length > 0 ? types : ["Udang Vaname"]).map((t, idx) => ({
+        const types = Array.from(new Set(filteredBenurs.map(b => b.jenis_udang).filter(Boolean)));
+        commoditiesToDisplay = types.map((t, idx) => ({
           komoditas_id: `derived_${idx}`,
           nama_komoditas: t,
           jenis_komoditas: t,
@@ -386,12 +400,33 @@ export default function LaporanPage() {
       // Metadata Summary Box
       let tambakText = "Semua Kolam Tambak";
       let siklusText = "Semua Siklus";
+      let pemilikText = "Semua Anggota";
+
       if (selectedTambakId !== "all") {
-        tambakText = tambaks.find(t => t.tambak_id === selectedTambakId)?.nama_tambak || "Kolam";
+        const tItem = tambaks.find(t => t.tambak_id === selectedTambakId);
+        tambakText = tItem?.nama_tambak || "Kolam";
+        
+        if (tItem) {
+          if (tItem.nama_anggota) {
+            pemilikText = tItem.nama_anggota;
+          } else {
+            const matchAnggota = anggotaList.find(a => a.anggota_id === tItem.anggota_id);
+            if (matchAnggota) {
+              pemilikText = matchAnggota.nama_anggota;
+            } else if (activeAnggota) {
+              pemilikText = activeAnggota.nama_anggota;
+            } else {
+              pemilikText = "-";
+            }
+          }
+        }
+
         if (selectedSiklusId !== "all") {
           const sNum = cycles.find(c => c.siklus_id === selectedSiklusId)?.nomor_siklus;
           siklusText = `Siklus #${sNum}`;
         }
+      } else if (activeAnggota) {
+        pemilikText = activeAnggota.nama_anggota;
       }
 
       const tanggalCetak = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
@@ -406,14 +441,16 @@ export default function LaporanPage() {
       doc.setTextColor(100, 116, 139); // Slate 500
       doc.setFont("helvetica", "bold");
       doc.text("KOLAM / TAMBAK:", 18, 38);
-      doc.text("SIKLUS BUDIDAYA:", 85, 38);
-      doc.text("TANGGAL CETAK:", 145, 38);
+      doc.text("PEMILIK TAMBAK:", 68, 38);
+      doc.text("SIKLUS BUDIDAYA:", 118, 38);
+      doc.text("TANGGAL CETAK:", 160, 38);
 
       doc.setTextColor(15, 23, 42); // Slate 900
       doc.setFont("helvetica", "bold");
       doc.text(tambakText, 18, 43);
-      doc.text(siklusText, 85, 43);
-      doc.text(tanggalCetak, 145, 43);
+      doc.text(pemilikText, 68, 43);
+      doc.text(siklusText, 118, 43);
+      doc.text(tanggalCetak, 160, 43);
 
       // --- Executive KPI Metric Summary Cards (PDF Header Stats) ---
       const totalBenurCost = reportData.benur.reduce((sum, item) => sum + Number(item.total_harga || 0), 0);
@@ -740,8 +777,8 @@ export default function LaporanPage() {
 
       let commoditiesToDisplay = Array.from(uniqueCommodityMap.values());
       if (!commoditiesToDisplay || commoditiesToDisplay.length === 0) {
-        const types = Array.from(new Set(filteredBenurs.map(b => b.jenis_udang || "Udang Vaname")));
-        commoditiesToDisplay = (types.length > 0 ? types : ["Udang Vaname"]).map((t, idx) => ({
+        const types = Array.from(new Set(filteredBenurs.map(b => b.jenis_udang).filter(Boolean)));
+        commoditiesToDisplay = types.map((t, idx) => ({
           komoditas_id: `derived_${idx}`,
           nama_komoditas: t,
           jenis_komoditas: t,
@@ -786,25 +823,25 @@ export default function LaporanPage() {
 
         return [
           idx + 1,
-          k.nama_komoditas || k.jenis_komoditas || "Udang Vaname",
+          k.nama_komoditas || k.jenis_komoditas || "-",
           asalBenihStr,
           totalBenurTebar > 0 ? `${formatNumber(totalBenurTebar)} ${isSeaweed ? "kg" : "ekor"}` : "-",
           srPercentStr,
           totalPanenKg > 0 ? `${formatNumber(totalPanenKg)} kg` : "-",
-          "2-3 kali/tahun",
+          totalPanenKg > 0 || totalBenurTebar > 0 ? "2-3 kali/tahun" : "-",
           avgSize && avgSize !== "-" ? `${avgSize} ekor/kg` : "-"
         ];
       });
 
       if (pokdakanRows.length === 0) {
         pokdakanRows.push([
-          1,
-          "Udang Vaname",
+          "-",
+          "Belum ada data komoditas",
           "-",
           "-",
           "-",
           "-",
-          "2-3 kali/tahun",
+          "-",
           "-"
         ]);
       }
@@ -915,7 +952,13 @@ export default function LaporanPage() {
                     onChange={(e) => setSelectedTambakId(e.target.value)}
                     className="w-full h-9.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
                   >
-                    <option value="all">Semua Tambak</option>
+                    {/* Mode pokdakan: tampilkan "Semua Tambak". Mode personal: tidak ada pilihan agregat "Semua Tambak Saya" */}
+                    {!activeAnggota && (
+                      <option value="all">Semua Tambak</option>
+                    )}
+                    {activeAnggota && tambaks.length === 0 && (
+                      <option value="none" disabled>— Belum ada tambak —</option>
+                    )}
                     {tambaks.map((t) => (
                       <option key={t.tambak_id} value={t.tambak_id}>
                         {t.nama_tambak}
@@ -968,11 +1011,17 @@ export default function LaporanPage() {
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end">
+              <div className="pt-2 flex flex-col items-end gap-2">
+                {/* Peringatan jika mode personal tapi belum punya tambak */}
+                {activeAnggota && tambaks.length === 0 && (
+                  <p className="text-xs text-amber-600 font-medium bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5">
+                    Tambahkan tambak terlebih dahulu untuk dapat mencetak laporan.
+                  </p>
+                )}
                 <Button 
                   onClick={handleGenerateReport} 
-                  disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 font-bold text-xs rounded-xl shadow-2xs px-5 h-10 text-white gap-2 transition-all cursor-pointer"
+                  disabled={isLoading || (!!activeAnggota && tambaks.length === 0)}
+                  className="bg-blue-600 hover:bg-blue-700 font-bold text-xs rounded-xl shadow-2xs px-5 h-10 text-white gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <>
@@ -1119,12 +1168,22 @@ export default function LaporanPage() {
 
                         let list = Array.from(uniqueMap.values());
                         if (list.length === 0) {
-                          const types = Array.from(new Set(reportData.benur.map(b => b.jenis_udang || "Udang Vaname")));
-                          list = (types.length > 0 ? types : ["Udang Vaname"]).map((t, idx) => ({
+                          const types = Array.from(new Set(reportData.benur.map(b => b.jenis_udang).filter(Boolean)));
+                          list = types.map((t, idx) => ({
                             komoditas_id: `derived_${idx}`,
                             nama_komoditas: t,
                             jenis_komoditas: t,
                           }));
+                        }
+
+                        if (list.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={8} className="px-4 py-8 text-center text-slate-400 font-medium">
+                                Belum ada data budidaya & komoditas yang dicatat
+                              </td>
+                            </tr>
+                          );
                         }
 
                         return list.map((k, idx) => {
@@ -1165,7 +1224,7 @@ export default function LaporanPage() {
                             <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                               <td className="px-4 py-3 text-center font-bold text-slate-500">{idx + 1}</td>
                               <td className="px-4 py-3 font-extrabold text-slate-900">
-                                {k.nama_komoditas || k.jenis_komoditas || "Udang Vaname"}
+                                {k.nama_komoditas || k.jenis_komoditas || "-"}
                               </td>
                               <td className="px-4 py-3 text-slate-600 capitalize">{asalBenihStr}</td>
                               <td className="px-4 py-3 text-right font-medium">
@@ -1175,7 +1234,9 @@ export default function LaporanPage() {
                               <td className="px-4 py-3 text-right font-black text-emerald-700">
                                 {totalPanenKg > 0 ? `${formatNumber(totalPanenKg)} kg` : "-"}
                               </td>
-                              <td className="px-4 py-3 text-center text-slate-500">2-3 kali/tahun</td>
+                              <td className="px-4 py-3 text-center text-slate-500">
+                                {totalPanenKg > 0 || totalBenurTebar > 0 ? "2-3 kali/tahun" : "-"}
+                              </td>
                               <td className="px-4 py-3 text-center font-bold text-slate-700">
                                 {avgSize && avgSize !== "-" ? `${avgSize} ekor/kg` : "-"}
                               </td>

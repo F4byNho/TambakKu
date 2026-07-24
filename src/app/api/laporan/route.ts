@@ -12,12 +12,14 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const tambakId = searchParams.get("tambakId") || "";
     const siklusId = searchParams.get("siklusId") || "";
+    const anggotaId = searchParams.get("anggotaId") || "";
     
     const { userId } = session;
     const res = await fetchFromGAS<any>("getLaporanDataset", {
       userId,
       tambakId,
       siklusId,
+      anggotaId,
     });
     
     if (res.error) {
@@ -33,3 +35,4 @@ export async function GET(req: Request) {
     );
   }
 }
+

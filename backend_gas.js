@@ -245,7 +245,7 @@ function doGet(e) {
         return getLaporanDataset(params.userId, params.tambakId, params.siklusId);
 
       case "getDashboardData":
-        return getDashboardDataset(params.userId);
+        return getDashboardDataset(params.userId, params.anggotaId, params.tambakId);
 
       case "getHPPSettings":
         const hppSettings = readSheetData("HPP Settings");
@@ -324,9 +324,32 @@ function doPost(e) {
         return updateRowData("Anggota", "anggota_id", data.anggota_id, data);
 
       case "deleteAnggota":
-        // Hapus juga tambak milik anggota ini
-        const tSheet = ss.getSheetByName("Tambak");
-        deleteRowsByFilter("Tambak", "anggota_id", data.anggota_id);
+        // 1. Dapatkan daftar tambak milik anggota ini
+        const listTambak = readSheetData("Tambak");
+        const tambakMilikAnggota = listTambak.filter(t => t.anggota_id === data.anggota_id);
+        
+        // 2. Dapatkan daftar semua siklus
+        const listSiklus = readSheetData("Siklus");
+        
+        // 3. Iterasi setiap tambak milik anggota untuk menghapus siklus dan log produksinya
+        tambakMilikAnggota.forEach(t => {
+          const siklusMilikTambak = listSiklus.filter(s => s.tambak_id === t.tambak_id);
+          
+          siklusMilikTambak.forEach(s => {
+            deleteRowsByFilter("Komoditas", "siklus_id", s.siklus_id);
+            deleteRowsByFilter("Penebaran Benur", "siklus_id", s.siklus_id);
+            deleteRowsByFilter("Operasional", "siklus_id", s.siklus_id);
+            deleteRowsByFilter("Sampling", "siklus_id", s.siklus_id);
+            deleteRowsByFilter("Panen", "siklus_id", s.siklus_id);
+            deleteRowsByFilter("HPP Settings", "siklus_id", s.siklus_id);
+            deleteRowData("Siklus", "siklus_id", s.siklus_id);
+          });
+          
+          // Hapus tambak itu sendiri
+          deleteRowData("Tambak", "tambak_id", t.tambak_id);
+        });
+        
+        // 4. Hapus anggota itu sendiri
         return deleteRowData("Anggota", "anggota_id", data.anggota_id);
 
       case "createTambak":
@@ -348,6 +371,22 @@ function doPost(e) {
         return updateRowData("Tambak", "tambak_id", data.tambak_id, data);
         
       case "deleteTambak":
+        // 1. Dapatkan daftar semua siklus milik tambak ini
+        const allSiklus = readSheetData("Siklus");
+        const siklusMilikTambak = allSiklus.filter(s => s.tambak_id === data.tambak_id);
+        
+        // 2. Hapus log produksi untuk setiap siklus
+        siklusMilikTambak.forEach(s => {
+          deleteRowsByFilter("Komoditas", "siklus_id", s.siklus_id);
+          deleteRowsByFilter("Penebaran Benur", "siklus_id", s.siklus_id);
+          deleteRowsByFilter("Operasional", "siklus_id", s.siklus_id);
+          deleteRowsByFilter("Sampling", "siklus_id", s.siklus_id);
+          deleteRowsByFilter("Panen", "siklus_id", s.siklus_id);
+          deleteRowsByFilter("HPP Settings", "siklus_id", s.siklus_id);
+          deleteRowData("Siklus", "siklus_id", s.siklus_id);
+        });
+        
+        // 3. Hapus tambak itu sendiri
         return deleteRowData("Tambak", "tambak_id", data.tambak_id);
         
       case "createSiklus":
@@ -373,6 +412,7 @@ function doPost(e) {
         deleteRowsByFilter("Operasional", "siklus_id", data.siklus_id);
         deleteRowsByFilter("Sampling", "siklus_id", data.siklus_id);
         deleteRowsByFilter("Panen", "siklus_id", data.siklus_id);
+        deleteRowsByFilter("HPP Settings", "siklus_id", data.siklus_id);
         return deleteRowData("Siklus", "siklus_id", data.siklus_id);
 
       case "createKomoditas":
@@ -397,6 +437,7 @@ function doPost(e) {
         deleteRowsByFilter("Sampling", "komoditas_id", data.komoditas_id);
         deleteRowsByFilter("Panen", "komoditas_id", data.komoditas_id);
         deleteRowsByFilter("Operasional", "komoditas_id", data.komoditas_id);
+        deleteRowsByFilter("HPP Settings", "komoditas_id", data.komoditas_id);
         return deleteRowData("Komoditas", "komoditas_id", data.komoditas_id);
         
       case "createBenur":
@@ -653,15 +694,37 @@ function deleteRowsByFilter(sheetName, filterColumnName, filterValue) {
 }
 
 // Agregasi Data Dashboard
-function getDashboardDataset(userId) {
+function getDashboardDataset(userId, anggotaId, tambakId) {
   const anggotaList = readSheetData("Anggota").filter(a => a.user_id === userId);
-  const tambaks = readSheetData("Tambak").filter(t => t.user_id === userId);
-  const siklus = readSheetData("Siklus").filter(s => s.user_id === userId);
-  const komoditas = readSheetData("Komoditas").filter(k => k.user_id === userId);
-  const benurs = readSheetData("Penebaran Benur").filter(b => b.user_id === userId);
-  const ops = readSheetData("Operasional").filter(o => o.user_id === userId);
-  const samplings = readSheetData("Sampling").filter(s => s.user_id === userId);
-  const panens = readSheetData("Panen").filter(p => p.user_id === userId);
+  let tambaks = readSheetData("Tambak").filter(t => t.user_id === userId);
+  
+  if (tambakId) {
+    tambaks = tambaks.filter(t => t.tambak_id === tambakId);
+  } else if (anggotaId) {
+    tambaks = tambaks.filter(t => t.anggota_id === anggotaId);
+  }
+  
+  const tambakIds = new Set(tambaks.map(t => t.tambak_id));
+  
+  let siklus = readSheetData("Siklus").filter(s => s.user_id === userId);
+  if (tambakId || anggotaId) {
+    siklus = siklus.filter(s => tambakIds.has(s.tambak_id));
+  }
+  const siklusIds = new Set(siklus.map(s => s.siklus_id));
+  
+  let komoditas = readSheetData("Komoditas").filter(k => k.user_id === userId);
+  let benurs = readSheetData("Penebaran Benur").filter(b => b.user_id === userId);
+  let ops = readSheetData("Operasional").filter(o => o.user_id === userId);
+  let samplings = readSheetData("Sampling").filter(s => s.user_id === userId);
+  let panens = readSheetData("Panen").filter(p => p.user_id === userId);
+  
+  if (tambakId || anggotaId) {
+    komoditas = komoditas.filter(k => siklusIds.has(k.siklus_id));
+    benurs = benurs.filter(b => siklusIds.has(b.siklus_id));
+    ops = ops.filter(o => siklusIds.has(o.siklus_id));
+    samplings = samplings.filter(s => siklusIds.has(s.siklus_id));
+    panens = panens.filter(p => siklusIds.has(p.siklus_id));
+  }
   
   const activeSiklus = siklus.filter(s => s.status === "aktif");
   const totalLuasTambak = tambaks.reduce((acc, curr) => acc + Number(curr.luas_tambak || 0), 0);
@@ -710,7 +773,7 @@ function getDashboardDataset(userId) {
           nama_anggota: owner ? owner.nama_anggota : "Tanpa Pemilik"
         };
       }),
-      // Data untuk chart
+      // Data untuk chart / summary
       cyclesSummary: siklus.map(s => {
         const cBenur = benurs.filter(b => b.siklus_id === s.siklus_id).reduce((acc, c) => acc + Number(c.total_harga || 0), 0);
         const cOp = ops.filter(o => o.siklus_id === s.siklus_id).reduce((acc, c) => acc + Number(c.nominal || 0), 0);
@@ -759,16 +822,26 @@ function getHPPDataset(userId, siklusId) {
 }
 
 // Ambil Seluruh Data Relasional untuk Laporan
-function getLaporanDataset(userId, tambakId, siklusId) {
-  const tambaks = readSheetData("Tambak").filter(t => t.user_id === userId);
+function getLaporanDataset(userId, tambakId, siklusId, anggotaId) {
+  let tambaks = readSheetData("Tambak").filter(t => t.user_id === userId);
+  
+  // Jika mode personal (anggotaId ada), filter tambak milik anggota tersebut
+  if (anggotaId) {
+    tambaks = tambaks.filter(t => t.anggota_id === anggotaId);
+  }
+  
+  const allowedTambakIds = new Set(tambaks.map(t => t.tambak_id));
+  
   const allSiklus = readSheetData("Siklus").filter(s => s.user_id === userId);
   const komoditas = readSheetData("Komoditas").filter(k => k.user_id === userId);
   
   // Filter berdasarkan tambak dan siklus jika didefinisikan
   const filteredSiklus = allSiklus.filter(s => {
+    // Jika anggotaId ada, hanya tampilkan siklus dari tambak anggota tersebut
+    const matchAnggota = anggotaId ? allowedTambakIds.has(s.tambak_id) : true;
     const matchTambak = tambakId ? s.tambak_id === tambakId : true;
     const matchSiklus = siklusId ? s.siklus_id === siklusId : true;
-    return matchTambak && matchSiklus;
+    return matchAnggota && matchTambak && matchSiklus;
   });
   
   const siklusIds = filteredSiklus.map(s => s.siklus_id);
@@ -778,9 +851,16 @@ function getLaporanDataset(userId, tambakId, siklusId) {
   const samplings = readSheetData("Sampling").filter(s => siklusIds.includes(s.siklus_id));
   const panens = readSheetData("Panen").filter(p => siklusIds.includes(p.siklus_id));
   
+  // Tambak yang ditampilkan di laporan: hanya yang relevan dengan siklus yang terfilter
+  const relevantTambakIds = new Set(filteredSiklus.map(s => s.tambak_id));
+  const relevantTambaks = tambaks.filter(t => 
+    (!tambakId || t.tambak_id === tambakId) &&
+    (siklusIds.length === 0 || relevantTambakIds.has(t.tambak_id))
+  );
+  
   return jsonResponse({
     data: {
-      tambaks: tambaks.filter(t => !tambakId || t.tambak_id === tambakId),
+      tambaks: tambakId ? relevantTambaks : tambaks.filter(t => !anggotaId || allowedTambakIds.has(t.tambak_id)),
       siklus: filteredSiklus,
       komoditas: komoditas.filter(k => siklusIds.includes(k.siklus_id)),
       benur: benurs,
@@ -790,3 +870,4 @@ function getLaporanDataset(userId, tambakId, siklusId) {
     }
   });
 }
+

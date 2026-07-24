@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -44,7 +44,7 @@ interface KomoditasItem {
   status: string;
 }
 
-export default function KomoditasDetailPage() {
+function KomoditasDetailContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -345,5 +345,20 @@ export default function KomoditasDetailPage() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+export default function KomoditasDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[75vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm font-semibold text-slate-500">Memuat detail komoditas...</p>
+        </div>
+      </div>
+    }>
+      <KomoditasDetailContent />
+    </Suspense>
   );
 }

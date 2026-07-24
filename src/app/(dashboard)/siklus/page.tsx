@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { 
@@ -52,7 +52,7 @@ interface SiklusItem {
   status: string;
 }
 
-export default function SiklusPage() {
+function SiklusContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { activeTambak, activeAnggota, anggotaList, tambakList, selectContext } = usePokdakan();
@@ -107,11 +107,11 @@ export default function SiklusPage() {
 
   useEffect(() => {
     fetchSiklusData();
-  }, [activeTambak]);
+  }, [activeTambak, activeAnggota]);
 
   useEffect(() => {
     applyFilters();
-  }, [cycles, activeTambak, statusFilter, searchQuery]);
+  }, [cycles, activeTambak, activeAnggota, statusFilter, searchQuery]);
 
   const fetchSiklusData = async () => {
     setIsLoading(true);
@@ -136,9 +136,14 @@ export default function SiklusPage() {
   const applyFilters = () => {
     let result = [...cycles];
 
-    // Filter Tambak Aktif Context
+    // Filter Tambak Aktif atau Anggota Aktif Context
     if (activeTambak) {
       result = result.filter((c) => c.tambak_id === activeTambak.tambak_id);
+    } else if (activeAnggota) {
+      const memberTambakIds = new Set(
+        tambaks.filter((t: any) => t.anggota_id === activeAnggota.anggota_id).map((t: any) => t.tambak_id)
+      );
+      result = result.filter((c) => memberTambakIds.has(c.tambak_id));
     }
 
     // Filter Status
@@ -626,5 +631,20 @@ export default function SiklusPage() {
         isLoading={isSubmitting}
       />
     </div>
+  );
+}
+
+export default function SiklusPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[75vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm font-semibold text-slate-500">Memuat halaman siklus...</p>
+        </div>
+      </div>
+    }>
+      <SiklusContent />
+    </Suspense>
   );
 }

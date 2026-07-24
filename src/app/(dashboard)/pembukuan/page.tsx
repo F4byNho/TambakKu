@@ -1,23 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { 
-  Calculator, 
   Loader2, 
-  ArrowUpRight, 
   Eye, 
-  TrendingUp, 
-  TrendingDown, 
   Coins,
   BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { formatIDR, formatNumber } from "@/lib/utils";
+import { formatIDR } from "@/lib/utils";
 import HPPSection from "@/components/pembukuan/hpp-section";
 import { usePokdakan } from "@/context/pokdakan-context";
 
@@ -31,7 +27,7 @@ interface CycleSummary {
   status: string;
 }
 
-export default function PembukuanPage() {
+function PembukuanContent() {
   const searchParams = useSearchParams();
   const { activeTambak, activeAnggota } = usePokdakan();
   const initialTab = searchParams.get("tab") === "hpp" ? "hpp" : "pembukuan";
@@ -76,7 +72,6 @@ export default function PembukuanPage() {
     }
   };
 
-  // Calculate cumulative stats across all cycles
   const totalModalAll = cycles.reduce((sum, c) => sum + Number(c.modal || 0), 0);
   const totalRevenueAll = cycles.reduce((sum, c) => sum + Number(c.pendapatan || 0), 0);
   const totalLabaAll = totalRevenueAll - totalModalAll;
@@ -130,153 +125,163 @@ export default function PembukuanPage() {
             </div>
           </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Total Modal */}
-        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Modal Pengeluaran</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-black text-slate-900">{formatIDR(totalModalAll)}</p>
-            <p className="text-xs text-slate-400 mt-1">Modal seluruh siklus</p>
-          </CardContent>
-        </Card>
+          {/* KPI Cards Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+              <CardHeader className="pb-2">
+                <CardDescription className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Modal Pengeluaran</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-black text-slate-900">{formatIDR(totalModalAll)}</p>
+                <p className="text-xs text-slate-400 mt-1">Modal seluruh siklus</p>
+              </CardContent>
+            </Card>
 
-        {/* Card 2: Total Pendapatan */}
-        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Jual Panen</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-black text-slate-900">{formatIDR(totalRevenueAll)}</p>
-            <p className="text-xs text-slate-400 mt-1">Pendapatan seluruh panen</p>
-          </CardContent>
-        </Card>
+            <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+              <CardHeader className="pb-2">
+                <CardDescription className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Jual Panen</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-black text-slate-900">{formatIDR(totalRevenueAll)}</p>
+                <p className="text-xs text-slate-400 mt-1">Pendapatan seluruh panen</p>
+              </CardContent>
+            </Card>
 
-        {/* Card 3: Laba/Rugi Kumulatif */}
-        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Keuntungan Bersih</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-black ${totalLabaAll > 0 ? "text-emerald-600" : totalLabaAll < 0 ? "text-red-600" : "text-slate-900"}`}>
-              {totalLabaAll >= 0 ? "+" : ""}{formatIDR(totalLabaAll)}
-            </p>
-            <span className={`inline-block mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-md ${
-              totalLabaAll > 0 
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
-                : totalLabaAll < 0 
-                ? "bg-red-50 text-red-700 border border-red-200" 
-                : "bg-slate-100 text-slate-700 border border-slate-200"
-            }`}>
-              {totalLabaAll > 0 ? "Untung" : totalLabaAll < 0 ? "Rugi" : "Impas"}
-            </span>
-          </CardContent>
-        </Card>
+            <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+              <CardHeader className="pb-2">
+                <CardDescription className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Keuntungan Bersih</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-2xl font-black ${totalLabaAll > 0 ? "text-emerald-600" : totalLabaAll < 0 ? "text-red-600" : "text-slate-900"}`}>
+                  {totalLabaAll >= 0 ? "+" : ""}{formatIDR(totalLabaAll)}
+                </p>
+                <span className={`inline-block mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-md ${
+                  totalLabaAll > 0 
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                    : totalLabaAll < 0 
+                    ? "bg-red-50 text-red-700 border border-red-200" 
+                    : "bg-slate-100 text-slate-700 border border-slate-200"
+                }`}>
+                  {totalLabaAll > 0 ? "Untung" : totalLabaAll < 0 ? "Rugi" : "Impas"}
+                </span>
+              </CardContent>
+            </Card>
 
-        {/* Card 4: Margin Kumulatif */}
-        <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Persentase Keuntungan</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-black ${marginAll > 0 ? "text-emerald-600" : marginAll < 0 ? "text-red-600" : "text-slate-900"}`}>
-              {marginAll.toFixed(1)}%
-            </p>
-            <p className="text-xs text-slate-400 mt-1">Persentase laba dari penjualan</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Ledger Table */}
-      <Card className="border-slate-100 shadow-sm">
-        {isLoading ? (
-          <div className="flex h-60 items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-              <p className="text-xs text-slate-500 font-semibold">Memuat buku besar keuangan...</p>
-            </div>
+            <Card className="border border-slate-200 shadow-2xs rounded-2xl bg-white">
+              <CardHeader className="pb-2">
+                <CardDescription className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Persentase Keuntungan</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-2xl font-black ${marginAll > 0 ? "text-emerald-600" : marginAll < 0 ? "text-red-600" : "text-slate-900"}`}>
+                  {marginAll.toFixed(1)}%
+                </p>
+                <p className="text-xs text-slate-400 mt-1">Persentase laba dari penjualan</p>
+              </CardContent>
+            </Card>
           </div>
-        ) : cycles.length > 0 ? (
-          <div className="p-4 sm:p-6 flex flex-col gap-4">
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow className="border-b border-slate-100">
-                    <TableHead className="font-bold text-slate-700">Tambak / Kolam</TableHead>
-                    <TableHead className="w-[100px] text-center font-bold text-slate-700">Siklus</TableHead>
-                    <TableHead className="w-[110px] text-center font-bold text-slate-700">Status</TableHead>
-                    <TableHead className="w-[150px] text-center font-bold text-slate-700">Total Modal</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">Total Pendapatan</TableHead>
-                    <TableHead className="w-[160px] text-center font-bold text-slate-700">Laba / Rugi Bersih</TableHead>
-                    <TableHead className="w-[100px] text-center font-bold text-slate-700">Margin</TableHead>
-                    <TableHead className="w-[180px] text-center font-bold text-slate-700">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cycles.map((item) => {
-                    const itemMargin = item.pendapatan > 0 ? (item.laba / item.pendapatan) * 100 : 0;
-                    return (
-                      <TableRow key={item.siklus_id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                        <TableCell className="font-bold text-slate-900 py-3">
-                          <div>{item.nama_tambak}</div>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {((item as any).komoditas && (item as any).komoditas.length > 0 ? (item as any).komoditas : ["Udang Vaname"]).map((kom: string, idx: number) => (
-                              <span key={idx} className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/55 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
-                                {kom}
-                              </span>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center font-semibold text-slate-800">Siklus #{item.nomor_siklus}</TableCell>
-                        <TableCell className="text-center">
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            item.status === "aktif" 
-                              ? "bg-green-50 text-green-700" 
-                              : "bg-slate-100 text-slate-700"
-                          }`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${item.status === "aktif" ? "bg-green-500" : "bg-slate-400"}`} />
-                            {item.status === "aktif" ? "Aktif" : "Selesai"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center font-medium text-slate-900">{formatIDR(item.modal)}</TableCell>
-                        <TableCell className="text-center font-medium text-slate-900">{formatIDR(item.pendapatan)}</TableCell>
-                        <TableCell className={`text-center font-bold ${item.laba > 0 ? "text-green-600" : item.laba < 0 ? "text-red-600" : "text-slate-900"}`}>
-                          {item.laba > 0 ? "+" : ""}{formatIDR(item.laba)}
-                        </TableCell>
-                        <TableCell className={`text-center font-bold ${item.laba > 0 ? "text-green-600" : item.laba < 0 ? "text-red-600" : "text-slate-900"}`}>
-                          {itemMargin.toFixed(1)}%
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Link href={`/siklus/${item.siklus_id}`}>
-                            <Button variant="outline" size="sm" className="h-8.5 rounded-xl border-slate-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-bold text-xs gap-1.5">
-                              <Eye className="h-3.5 w-3.5" /> Detail Pembukuan
-                            </Button>
-                          </Link>
-                        </TableCell>
+
+          {/* Main Ledger Table */}
+          <Card className="border-slate-100 shadow-sm">
+            {isLoading ? (
+              <div className="flex h-60 items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+                  <p className="text-xs text-slate-500 font-semibold">Memuat buku besar keuangan...</p>
+                </div>
+              </div>
+            ) : cycles.length > 0 ? (
+              <div className="p-4 sm:p-6 flex flex-col gap-4">
+                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow className="border-b border-slate-100">
+                        <TableHead className="font-bold text-slate-700">Tambak / Kolam</TableHead>
+                        <TableHead className="w-[100px] text-center font-bold text-slate-700">Siklus</TableHead>
+                        <TableHead className="w-[110px] text-center font-bold text-slate-700">Status</TableHead>
+                        <TableHead className="w-[150px] text-center font-bold text-slate-700">Total Modal</TableHead>
+                        <TableHead className="w-[160px] text-center font-bold text-slate-700">Total Pendapatan</TableHead>
+                        <TableHead className="w-[160px] text-center font-bold text-slate-700">Laba / Rugi Bersih</TableHead>
+                        <TableHead className="w-[100px] text-center font-bold text-slate-700">Margin</TableHead>
+                        <TableHead className="w-[180px] text-center font-bold text-slate-700">Aksi</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        ) : (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-4 shadow-inner">
-              <Coins className="h-7 w-7" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900 mb-1">Belum Ada Buku Besar</h3>
-            <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-              Buku besar keuangan akan otomatis terisi setelah Anda memulai siklus budidaya pertama kolam Anda dan melakukan pencatatan benur/operasional/panen.
-            </p>
-          </div>
-        )}
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {cycles.map((item) => {
+                        const itemMargin = item.pendapatan > 0 ? (item.laba / item.pendapatan) * 100 : 0;
+                        return (
+                          <TableRow key={item.siklus_id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                            <TableCell className="font-bold text-slate-900 py-3">
+                              <div>{item.nama_tambak}</div>
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {((item as any).komoditas && (item as any).komoditas.length > 0 ? (item as any).komoditas : ["Udang Vaname"]).map((kom: string, idx: number) => (
+                                  <span key={idx} className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/55 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                                    {kom}
+                                  </span>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center font-semibold text-slate-800">Siklus #{item.nomor_siklus}</TableCell>
+                            <TableCell className="text-center">
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                item.status === "aktif" 
+                                  ? "bg-green-50 text-green-700" 
+                                  : "bg-slate-100 text-slate-700"
+                              }`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${item.status === "aktif" ? "bg-green-500" : "bg-slate-400"}`} />
+                                {item.status === "aktif" ? "Aktif" : "Selesai"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center font-medium text-slate-900">{formatIDR(item.modal)}</TableCell>
+                            <TableCell className="text-center font-medium text-slate-900">{formatIDR(item.pendapatan)}</TableCell>
+                            <TableCell className={`text-center font-bold ${item.laba > 0 ? "text-green-600" : item.laba < 0 ? "text-red-600" : "text-slate-900"}`}>
+                              {item.laba > 0 ? "+" : ""}{formatIDR(item.laba)}
+                            </TableCell>
+                            <TableCell className={`text-center font-bold ${item.laba > 0 ? "text-green-600" : item.laba < 0 ? "text-red-600" : "text-slate-900"}`}>
+                              {itemMargin.toFixed(1)}%
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Link href={`/siklus/${item.siklus_id}`}>
+                                <Button variant="outline" size="sm" className="h-8.5 rounded-xl border-slate-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-bold text-xs gap-1.5">
+                                  <Eye className="h-3.5 w-3.5" /> Detail Pembukuan
+                                </Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-4 shadow-inner">
+                  <Coins className="h-7 w-7" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1">Belum Ada Buku Besar</h3>
+                <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                  Buku besar keuangan akan otomatis terisi setelah Anda memulai siklus budidaya pertama kolam Anda dan melakukan pencatatan benur/operasional/panen.
+                </p>
+              </div>
+            )}
+          </Card>
         </>
       )}
     </div>
+  );
+}
+
+export default function PembukuanPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-[75vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm font-semibold text-slate-500">Memuat halaman pembukuan...</p>
+        </div>
+      </div>
+    }>
+      <PembukuanContent />
+    </Suspense>
   );
 }
